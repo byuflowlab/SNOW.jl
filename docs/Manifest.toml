@@ -23,7 +23,7 @@ git-tree-sha1 = "b7715ae18be02110a8cf9cc8ed2ccdb1e3e3aba2"
 uuid = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 version = "0.26.1"
 
-[[GCopt]]
+[[SNOW]]
 path = ".."
 uuid = "105f6ee8-0889-46b1-9d4b-65e03cbc8f13"
 version = "0.1.0"

@@ -1,14 +1,14 @@
-using GCopt
+using SNOW
 using Documenter
 
 makedocs(;
-    modules=[GCopt],
+    modules=[SNOW],
     authors="Andrew Ning <aning@byu.edu> and contributors",
-    repo="https://github.com/byuflowlab/GCopt.jl/blob/{commit}{path}#L{line}",
-    sitename="GCopt.jl",
+    repo="https://github.com/byuflowlab/SNOW.jl/blob/{commit}{path}#L{line}",
+    sitename="SNOW.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://byuflowlab.github.io/GCopt.jl",
+        canonical="https://byuflowlab.github.io/SNOW.jl",
         assets=String[],
     ),
     pages=[
@@ -17,5 +17,5 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/byuflowlab/GCopt.jl",
+    repo="github.com/byuflowlab/SNOW.jl",
 )

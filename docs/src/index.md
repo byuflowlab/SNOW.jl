@@ -1,12 +1,12 @@
 ```@meta
-CurrentModule = GCopt
+CurrentModule = SNOW
 ```
 
-# GCopt
+# SNOW
 
 ```@index
 ```
 
 ```@autodocs
-Modules = [GCopt]
+Modules = [SNOW]
 ```
