@@ -235,3 +235,29 @@ xopt, fopt, info, out = minimize(sparsegrad, x0, ng, lx=lx, ux=ux, options=optio
 @test info == "Finished successfully: optimality conditions satisfied"
 
 end
+
+
+# @testset "problem format" begin
+
+# function test3!(g, prob, x)
+#     return nothing
+# end
+
+# prob = SNOW.createproblem(test3!, "test3")
+
+# x = [1.0, 2.0, 3.0]
+# lx = [0.0, 0.0, 0.0]
+# ux = 10*ones(3)
+# names = ["c1", "c2", "c3"]
+# SNOW.add_dv!(prob, x, lx, ux, names)
+
+# x2 = [8.0, 2.0]
+# lx2 = [0.0, 0.0, 0.0]
+# ux2 = 5*ones(3)
+# names2 = ["t1", "t2"]
+# SNOW.add_dv!(prob, x2, lx2, ux2, names2)
+
+# x = rand(5)
+# SNOW.get_dvs(prob, x)
+
+# end
