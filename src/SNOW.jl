@@ -7,23 +7,23 @@ using DiffResults
 using FiniteDiff
 using SparseArrays
 using SparseDiffTools
-
-include("derivatives.jl")
-
-export ForwardAD, ReverseAD, RevZyg, FD, UD
-export DensePattern, SparsePattern
-
-
 using Snopt
 using Ipopt
 
-include("wrappers.jl")
+
+include("derivatives.jl")
+
+export ForwardAD, ReverseAD, RevZyg, FD, UserDeriv
+export DensePattern, SparsePattern
+
+include("interface.jl")
 
 export minimize
 export Options
+
+include("solvers.jl")
+
 export SNOPT, IPOPT
 
 
-end  # module
-
-
+end

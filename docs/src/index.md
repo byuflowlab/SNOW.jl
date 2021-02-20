@@ -1,70 +1,27 @@
-```@meta
-CurrentModule = SNOW
-```
-
 # SNOW
 
-## QuickStart
+**Summary**: A wrapper for various sparse nonlinear optimization algorithms and derivative computation packages.
 
-Snopt solves optimization problems of the following form:
-```math
-\begin{aligned}
-\text{minimize} &\quad  f(x)  \\
-\text{subject to} &\quad  l_g \le g(x) \le u_g  \\
-    &\quad l_x \le x \le u_x
-\end{aligned}
-```
-Equality constraints can be specified by setting ``{l_g}_i = {u_g}_i``.  The expected function signature is:
+**Author**: Andrew Ning
+
+**Features**:
+
+- Allows easy switching between SNOPT and IPOPT from a common interface passing through all solver options, preserving output in files, and allowing warm starts (for SNOPT).
+- Easy switching between various differentiation methods: ForwardDiff, ReverseDiff, Zygote, FiniteDiff (forward, central, complex step), and user-defined derivatives.
+- Derivative calculations are all non-allocating during optimization.
+- Outputs are also cached as applicable to avoid unnecessary function calls.
+- Methods are provided to help determine sparsity patterns, sparse Jacobians can be updated efficiently with SparseDiffTools (using graph coloring), and the sparsity structure is passed to the solvers.
+
+
+**Documentation**:
+
+- Start with the [quick start](quickstart.md) to learn basic usage.
+- More advanced or specific queries are addressed in the [guide](guide.md).
+- Full details of the API are listed in [reference](reference.md).
+
+**Run Unit Tests**:
+
 ```julia
-f = func!(g, x)
-```
-where `g` is modified in-place.
-
-We start by loading the package.
-
-```@example opt1
-using SNOW
-```
-
-Next, we define the function we wish to optimize.  
-
-```@example opt1
-function simple!(g, x)
-    # objective
-    f = 4*x[1]^2 - x[1] - x[2] - 2.5
-    
-    # constraints
-    g[1] = -x[2]^2 + 1.5*x[1]^2 - 2*x[1] + 1
-    g[2] = x[2]^2 + 2*x[1]^2 - 2*x[1] - 4.25
-
-    return f
-end
-```
-
-We now define the starting point, bounds, and options.  The default for nonlinear constraints is
-```math
-g(x) \le 0
-```
-which suits us for this problem, so we leave that as is.
-```@example opt1
-x0 = [1.0; 2.0]
-nx = 2
-lx = -5*ones(nx)
-ux = 5*ones(nx)
-ng = 2
-
-options = Options(solver=IPOPT())
-xopt, fopt, info = minimize(simple!, x0, ng, lx=lx, ux=ux, options=options)
-
-println("xstar = ", xopt)
-println("fstar = ", fopt)
-println("info = ", info)
-```
-
-
-```@index
-```
-
-```@autodocs
-Modules = [SNOW]
+pkg> activate .
+pkg> test
 ```
