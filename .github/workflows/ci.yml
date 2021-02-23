@@ -53,8 +53,8 @@ jobs:
       - run: |
           julia --project=docs -e '
             using Documenter: doctest
-            using GCopt
-            doctest(GCopt)'
+            using SNOW
+            doctest(SNOW)'
       - run: julia --project=docs docs/make.jl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

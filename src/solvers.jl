@@ -108,7 +108,7 @@ Use Snopt as the optimizer
 # Arguments
 - `options::Dict`: options for Snopt.  see Snopt docs.
 - `names::Snopt.Names`: custom names for function and variables.
-- `warmstart::Snopt.Start`: custom names for function and variables.
+- `warmstart::Snopt.Start`: a warmstart object (one of the outputs of Snopt.Outputs)
 """
 struct SNOPT{T1,T2,T3} <: AbstractSolver 
     options::T1

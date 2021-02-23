@@ -185,9 +185,13 @@ options = Options(;solver)
 xopt, fopt, info = minimize(simple!, x0, ng, lx, ux, lg, ug, options)
 ```
 
-SNOPT has three optional argument: a dictionary of snopt-specific options (see Snopt documentation), a Snopt.Names object to define custome names in the output file (see <https://github.com/byuflowlab/Snopt.jl>), and a warmstart object (explained below).
+SNOPT has three optional argument: a dictionary of snopt-specific options (see Snopt documentation), a `Snopt.Names` object to define custom names in the output file (see <https://github.com/byuflowlab/Snopt.jl>), and a warmstart object (explained below).
 
-Snopt also returns a fourth output, which is a struct Snopt.Out containing information like the number of iterations, function calls, solve time, constraint values, and a warm start object.  That warm start object can be put back in as an input for a later run (it contains final values for x, f, Lagrange multipliers, etc.)
+```@docs
+SNOPT
+```
+
+Snopt also returns a fourth output, which is a struct `Snopt.Out` containing information like the number of iterations, function calls, solve time, constraint values, and a warm start object.  That warm start object can be put back in as an input for a later run (it contains final values for x, f, Lagrange multipliers, etc.)
 
 The below example shows setting options, extracting some outputs, and using a warm start.
 
@@ -228,7 +232,21 @@ options = Options(;solver)
 xopt, fopt, info, out = minimize(fun, x0, ng, lx, ux, lg, ug, options)
 println("major iter = ", out.major_iter)
 println("iterations = ", out.iterations)
+println("solve time = ", out.run_time)
 ```
 
 
 
+## Interface
+
+The options are set as follows
+
+```@docs
+Options
+```
+
+and the main function is minimize:
+
+```@docs
+minimize
+```

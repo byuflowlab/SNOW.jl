@@ -182,7 +182,7 @@ ux = [65.0; 70.0]
 
 ng = 3
 options = Options(solver=IPOPT(), derivatives=FD("forward"))
-xopt, fopt, info, out = minimize(barnes, x0, ng, lx=lx, ux=ux, options=options)
+xopt, fopt, info, out = minimize(barnes, x0, ng, lx, ux, -Inf, 0.0, options)
 
 
 @test isapprox(xopt[1], 49.5263; atol=1e-4)
@@ -192,7 +192,7 @@ xopt, fopt, info, out = minimize(barnes, x0, ng, lx=lx, ux=ux, options=options)
 
 
 options = Options(solver=SNOPT(), derivatives=ForwardAD())
-xopt, fopt, info, out = minimize(barnes, x0, ng, lx=lx, ux=ux, options=options)
+xopt, fopt, info, out = minimize(barnes, x0, ng, lx, ux, -Inf, 0.0, options)
 
 @test isapprox(xopt[1], 49.5263; atol=1e-4)
 @test isapprox(xopt[2], 19.6228; atol=1e-4)
@@ -200,7 +200,7 @@ xopt, fopt, info, out = minimize(barnes, x0, ng, lx=lx, ux=ux, options=options)
 @test info == "Finished successfully: optimality conditions satisfied"
 
 options = Options(solver=SNOPT(), derivatives=FD("complex"))
-xopt, fopt, info, out = minimize(barnes, x0, ng, lx=lx, ux=ux, options=options)
+xopt, fopt, info, out = minimize(barnes, x0, ng, lx, ux, -Inf, 0.0, options)
 
 @test isapprox(xopt[1], 49.5263; atol=1e-4)
 @test isapprox(xopt[2], 19.6228; atol=1e-4)
@@ -227,7 +227,7 @@ ng = 2
 sp = SparsePattern(ForwardAD(), sparsegrad, ng, lx, ux)
 
 options = Options(solver=SNOPT(), derivatives=[ReverseAD(), ForwardAD()], sparsity=sp)
-xopt, fopt, info, out = minimize(sparsegrad, x0, ng, lx=lx, ux=ux, options=options)
+xopt, fopt, info, out = minimize(sparsegrad, x0, ng, lx, ux, -Inf, 0.0, options)
 
 @test isapprox(xopt[1], 1.0; atol=1e-6)
 @test isapprox(xopt[2], 2.0; atol=1e-6)

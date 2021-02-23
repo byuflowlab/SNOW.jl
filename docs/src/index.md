@@ -17,7 +17,6 @@
 
 - Start with the [quick start](quickstart.md) to learn basic usage.
 - More advanced or specific queries are addressed in the [guide](guide.md).
-- Full details of the API are listed in [reference](reference.md).
 
 **Run Unit Tests**:
 

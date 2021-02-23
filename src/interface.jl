@@ -9,9 +9,9 @@ function optimize(solver::AbstractSolver, cache, x0, lx, ux, lg, ug, rows, cols)
 end
 
 """
-    Options(;sparsity=DensePattern(), derivatives=FD("forward"), solver=SNOPT())
+    Options(;sparsity=DensePattern(), derivatives=FD("forward"), solver=IPOPT())
 
-Options for SNOW.  Default is dense, forward finite differencing, and SNOPT.
+Options for SNOW.  Default is dense, forward finite differencing, and IPOPT.
 
 # Arguments
 - `sparsity::AbstractSparsityPattern`: specify sparsity pattern
@@ -40,16 +40,15 @@ end
 """
     minimize(func!, x0, ng, lx=-Inf, ux=Inf, lg=-Inf, ug=0.0, options=Options())
 
-Main function.  Minimize.
+solve the optimization problem
 
-min     f
-s.t.    lx < x < ux
-        lg < g < ug
+``\\text{minimize} \\quad    f(x) \\\\``
+``\\text{subject to} \\quad  l_g \\le g(x) \\le u_g \\\\``
+``\\quad\\quad\\quad\\quad   l_x \\le x \\le u_x``
 
-f = func!(g, x)
-unless user derivatives then: f = func!(g, df, dg, x)
+`f = func!(g, x)`, unless user-supplied derivatives then: `f = func!(g, df, dg, x)`
 
-equality constraint: lg = ug
+equality constraint for the ith constraint: `lg[i] = ug[i]`
 """
 function minimize(func!, x0, ng, lx=-Inf, ux=Inf, lg=-Inf, ug=0.0, options=Options())
 
