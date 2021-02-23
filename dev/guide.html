@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Guide · SNOW.jl</title><link rel="canonical" href="https://byuflowlab.github.io/SNOW.jl/guide.html"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit">SNOW.jl</span></div><form class="docs-search" action="search.html"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="index.html">Home</a></li><li><a class="tocitem" href="quickstart.html">Quick Start</a></li><li class="is-active"><a class="tocitem" href="guide.html">Guide</a><ul class="internal"><li><a class="tocitem" href="#Derivatives-(Dense-Jacobians)"><span>Derivatives (Dense Jacobians)</span></a></li><li><a class="tocitem" href="#Derivatives-(Sparse-Jacobians)"><span>Derivatives (Sparse Jacobians)</span></a></li><li><a class="tocitem" href="#Algorithms"><span>Algorithms</span></a></li><li><a class="tocitem" href="#Interface"><span>Interface</span></a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href="guide.html">Guide</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href="guide.html">Guide</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/byuflowlab/SNOW.jl/blob/master/docs/src/guide.md#L" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Guide"><a class="docs-heading-anchor" href="#Guide">Guide</a><a id="Guide-1"></a><a class="docs-heading-anchor-permalink" href="#Guide" title="Permalink"></a></h1><h2 id="Derivatives-(Dense-Jacobians)"><a class="docs-heading-anchor" href="#Derivatives-(Dense-Jacobians)">Derivatives (Dense Jacobians)</a><a id="Derivatives-(Dense-Jacobians)-1"></a><a class="docs-heading-anchor-permalink" href="#Derivatives-(Dense-Jacobians)" title="Permalink"></a></h2><p>SNOW wraps multiple packages to make it easier to efficiently compute derivatives. For dense Jacobians switching between derivative methods is straightforward and just requires selecting different options (and ensuring that your code is compatible with the method of choice).</p><p>Caches are created pre-optimization so that zero (or near zero) allocations occur during optimization.  If you wish to fully take advantage of this speed, your own code should also not allocate.  We also reuse outputs where possible to avoid additional unnecessary function calls.</p><pre><code class="language-julia">using SNOW
+
+# forward finite difference
+options = Options(derivatives=FD(&quot;forward&quot;))
+
+# central finite difference
+options = Options(derivatives=FD(&quot;central&quot;))
+
+# complex step
+options = Options(derivatives=FD(&quot;complex&quot;))
+
+# forward-mode algorithmic differentiation
+options = Options(derivatives=ForwardAD())
+
+# reverse-mode algorithmic differentiation
+options = Options(derivatives=ReverseAD())
+
+# Zygote (reverse-mode source-to-source AD)
+options = Options(derivatives=RevZyg())</code></pre><p>Note that dense Jacobians are the default so the above are equivalent to explicitly specifying dense:</p><pre><code class="language-julia">options = Options(derivatives=ForwardAD(), sparsity=DensePattern())</code></pre><p>You can also specify your own derivatives, by setting this option:</p><pre><code class="language-julia">options = Options(derivatives=UserDeriv())</code></pre><p>The function signature you provide should also be modified as follows:</p><pre><code class="language-julia">f = func!(g, df, dg, x)</code></pre><p>with the two new inputs: df and dg that should be modified in place.  <code>df</code> is a vector containing the objective gradient <span>$d f / {dx}_j$</span> and  <code>dg</code> is a matrix containing the constraint jacobian <span>${dg}_i / {dx}_j$</span>. Below is a simple example:</p><pre><code class="language-julia">using SNOW
+
+function deriv(g, df, dg, x)
+
+    # objective
+    f = x[1]^2 - 0.5*x[1] - x[2] - 2
+
+    # constraints
+    g[1] = x[1]^2 - 4*x[1] + x[2] + 1
+    g[2] = 0.5*x[1]^2 + x[2]^2 - x[1] - 4
+
+    # gradient
+    df[1] = 2*x[1] - 0.5
+    df[2] = -1
+
+    # jacobian
+    dg[1, 1] = 2*x[1] - 4
+    dg[1, 2] = 1
+    dg[2, 1] = x[1] - 1
+    dg[2, 2] = 2*x[2]
+
+end
+
+x0 = [1.0; 1.0]  # starting point
+lx = [-5.0, -5]  # lower bounds on x
+ux = [5.0, 5]  # upper bounds on x
+ng = 2  # number of constraints
+lg = -Inf*one(ng)  # lower bounds on g
+ug = zeros(ng)  # upper bounds on g
+options = Options(derivatives=UserDeriv())
+
+xopt, fopt, info = minimize(deriv, x0, ng, lx, ux, lg, ug, options)</code></pre><pre class="documenter-example-output">([1.0623762723849808, 2.120861754366321], 4.241723508732642, :Solve_Succeeded, nothing)</pre><h2 id="Derivatives-(Sparse-Jacobians)"><a class="docs-heading-anchor" href="#Derivatives-(Sparse-Jacobians)">Derivatives (Sparse Jacobians)</a><a id="Derivatives-(Sparse-Jacobians)-1"></a><a class="docs-heading-anchor-permalink" href="#Derivatives-(Sparse-Jacobians)" title="Permalink"></a></h2><p>Several methods exist to help detect sparsity patterns.  Given a function and provided bounds on <code>x</code>, the following  method generates three random points within the bounds and computes the Jacobian using either ForwardDiff or finite differencing. Elements of the Jacobian that are zero at all three spots are assumed to always be zero.  The resulting sparsity pattern is returned.  </p><pre><code class="language-julia">using SNOW
+
+# an example with a sparse Jacobian
+function example(g, x)
+    f = 1.0
+
+    g[1] = x[1]^2 + x[4]
+    g[2] = 3*x[2]
+    g[3] = x[2]*x[4]
+    g[4] = x[1]^3 + x[3]^3 + x[5]
+end
+
+ng = 4  # number of constraints
+lx = -5*ones(5)  # lower bounds for x
+ux = 5*ones(5)  # upper bounds for x
+sp  = SparsePattern(ForwardAD(), example, ng, lx, ux)</code></pre><pre class="documenter-example-output">SparsePattern{Int64}([1, 4, 2, 3, 4, 1, 3, 4], [1, 1, 2, 2, 3, 4, 4, 5])</pre><p>or with central differencing</p><pre><code class="language-julia">sp = SparsePattern(FD(&quot;central&quot;), example, ng, lx, ux)</code></pre><pre class="documenter-example-output">SparsePattern{Int64}([1, 4, 2, 3, 4, 1, 3, 4], [1, 1, 2, 2, 3, 4, 4, 5])</pre><p>Alternative approach include specifying the three points directly:</p><pre><code class="language-julia">x1 = rand(5)
+x2 = rand(5)
+x3 = rand(5)
+sp = SparsePattern(ForwardAD(), example, ng, x1, x2, x3)</code></pre><pre class="documenter-example-output">SparsePattern{Int64}([1, 4, 2, 3, 4, 1, 3, 4], [1, 1, 2, 2, 3, 4, 4, 5])</pre><p>You can also provide a Jacobian directly either in dense or sparse format.</p><pre><code class="language-julia">sp = SparsePattern(A)  # where A is a Matrix or a SparseMatrixCSC</code></pre><p>With a provided sparsity pattern, the package can use graph coloring to reduce the number of function calls if applicable, and pass the sparse structure to the optimizer.  The format is similar to the dense case, except you provide two differentiation methods: one for the gradient, and one for the Jacobian (though you could use the same method for both).  Even when the constraint Jacobian is sparse, the function gradient is often dense.  The function gradient in that case is well suited for a reverse mode (if forward mode was used you&#39;d require <span>$n_x$</span> forward negating the benefits of Jacobian sparsity).</p><pre><code class="language-julia">options = Options(sparsity=sp, derivatives=[ReverseAD(), ForwardAD()])  # reverse for gradient, sparse forward for Jacobian</code></pre><p>Currently supported options are ReverseAD, or RevZyg for the gradient, and ForwardAD or FD for the Jacobian.</p><p>You can also provide your own derivatives.  For sparse Jacobians there are a wide variety of possible use cases (structure you can take advantage of, mixed-mode AD, using a combination of analytic and AD, etc.), and so for best performance you may want to provide your own.</p><pre><code class="language-julia">options = Options(sparsity=sp, derivatives=UserDeriv())</code></pre><p>The function signature is modified like the dense case:</p><pre><code class="language-julia">f = func!(g, df, dg, x)</code></pre><p>except dg is a vector (not a matrix) containing the constraint jacobian in the order specified by sp.rows, sp.cols. Like the dense case, the vectors df and dg should be modified in place. </p><h2 id="Algorithms"><a class="docs-heading-anchor" href="#Algorithms">Algorithms</a><a id="Algorithms-1"></a><a class="docs-heading-anchor-permalink" href="#Algorithms" title="Permalink"></a></h2><p>Currently, you can choose between IPOPT and SNOPT, although the latter required a paid license.  Both methods produce a *.out file defaulting to ipopt.out for the former and snopt-print.out and snopt.summary.out for the latter. The names of the files can be changed through the algorithm-specific options.</p><p>IPOPT takes an optional argument, a dictionary, where ipopt-specific options can be provided.  See a list of options <a href="https://coin-or.github.io/Ipopt/OPTIONS.html">here</a>.</p><pre><code class="language-julia">using SNOW
+
+function simple!(g, x)
+    # objective
+    f = 4*x[1]^2 - x[1] - x[2] - 2.5
+
+    # constraints
+    g[1] = -x[2]^2 + 1.5*x[1]^2 - 2*x[1] + 1
+    g[2] = x[2]^2 + 2*x[1]^2 - 2*x[1] - 4.25
+    g[3] = x[1]^2 + x[1]*x[2] - 10.0
+
+    return f
+end
+x0 = [1.0; 2.0]  # starting point
+lx = [-5.0, -5]  # lower bounds on x
+ux = [5.0, 5]  # upper bounds on x
+ng = 3  # number of constraints
+lg = -Inf*one(ng)  # lower bounds on g
+ug = zeros(ng)  # upper bounds on g
+
+# ----- set some options ------
+ip_options = Dict(
+    &quot;max_iter&quot; =&gt; 3,
+    &quot;tol&quot; =&gt; 1e-6
+)
+solver = IPOPT(ip_options)
+options = Options(;solver)
+
+xopt, fopt, info = minimize(simple!, x0, ng, lx, ux, lg, ug, options)</code></pre><pre class="documenter-example-output">([-0.29979666466742994, 2.4087804638612322], -4.249471638610941, :Maximum_Iterations_Exceeded, nothing)</pre><p>SNOPT has three optional argument: a dictionary of snopt-specific options (see Snopt documentation), a <code>Snopt.Names</code> object to define custom names in the output file (see <a href="https://github.com/byuflowlab/Snopt.jl">https://github.com/byuflowlab/Snopt.jl</a>), and a warmstart object (explained below).</p><article class="docstring"><header><a class="docstring-binding" id="SNOW.SNOPT" href="#SNOW.SNOPT"><code>SNOW.SNOPT</code></a> — <span class="docstring-category">Type</span></header><section><div><pre><code class="language-julia">SNOPT(;options=Dict(), names=Snopt.Names(), warmstart=nothing)</code></pre><p>Use Snopt as the optimizer</p><p><strong>Arguments</strong></p><ul><li><code>options::Dict</code>: options for Snopt.  see Snopt docs.</li><li><code>names::Snopt.Names</code>: custom names for function and variables.</li><li><code>warmstart::Snopt.Start</code>: a warmstart object (one of the outputs of Snopt.Outputs)</li></ul></div><a class="docs-sourcelink" target="_blank" href="https://github.com/byuflowlab/SNOW.jl/blob/c9c4b1f4f055d8799b1e86fa0bb2c5a530fcefe4/src/solvers.jl#LL103-L112">source</a></section></article><p>Snopt also returns a fourth output, which is a struct <code>Snopt.Out</code> containing information like the number of iterations, function calls, solve time, constraint values, and a warm start object.  That warm start object can be put back in as an input for a later run (it contains final values for x, f, Lagrange multipliers, etc.)</p><p>The below example shows setting options, extracting some outputs, and using a warm start.</p><pre><code class="language-julia">using SNOW
+
+function fun(g, x)
+
+    f = x[1]^2 - x[2]
+
+    g[1] = x[2] - 2*x[1]
+    g[2] = -x[2]
+end
+
+x0 = [10.0; 10.0]
+lx = [0.0; 0.0]
+ux = [20.0; 50.0]
+ng = 2
+lg = -Inf*ones(ng)
+ug = zeros(ng)
+
+# artificially limiting the major iterations so we can restart
+snopt_opt = Dict(
+    &quot;Major iterations limit&quot; =&gt; 2
+)
+
+solver = SNOPT(options=snopt_opt)
+options = Options(;solver)
+
+xopt, fopt, info, out = minimize(fun, x0, ng, lx, ux, lg, ug, options)
+println(&quot;major iter = &quot;, out.major_iter)
+println(&quot;iterations = &quot;, out.iterations)
+println(&quot;solve time = &quot;, out.run_time)
+
+# warm start from where we stopped
+solver = SNOPT(warmstart=out.warm)
+options = Options(;solver)
+xopt, fopt, info, out = minimize(fun, x0, ng, lx, ux, lg, ug, options)
+println(&quot;major iter = &quot;, out.major_iter)
+println(&quot;iterations = &quot;, out.iterations)
+println(&quot;solve time = &quot;, out.run_time)</code></pre><pre class="documenter-example-output">major iter = 2
+iterations = 4
+solve time = 0.000125885009765625
+major iter = 3
+iterations = 5
+solve time = 8.7738037109375e-5</pre><h2 id="Interface"><a class="docs-heading-anchor" href="#Interface">Interface</a><a id="Interface-1"></a><a class="docs-heading-anchor-permalink" href="#Interface" title="Permalink"></a></h2><p>The options are set as follows</p><article class="docstring"><header><a class="docstring-binding" id="SNOW.Options" href="#SNOW.Options"><code>SNOW.Options</code></a> — <span class="docstring-category">Type</span></header><section><div><pre><code class="language-julia">Options(;sparsity=DensePattern(), derivatives=FD(&quot;forward&quot;), solver=IPOPT())</code></pre><p>Options for SNOW.  Default is dense, forward finite differencing, and IPOPT.</p><p><strong>Arguments</strong></p><ul><li><code>sparsity::AbstractSparsityPattern</code>: specify sparsity pattern</li><li><code>derivatives::AbstractDiffMethod</code>: specific differentiation methods to use</li><li><code>solver::AbstractSolver</code>: specificy which optimizer to use</li></ul></div><a class="docs-sourcelink" target="_blank" href="https://github.com/byuflowlab/SNOW.jl/blob/c9c4b1f4f055d8799b1e86fa0bb2c5a530fcefe4/src/interface.jl#LL11-L20">source</a></section></article><p>and the main function is minimize:</p><article class="docstring"><header><a class="docstring-binding" id="SNOW.minimize" href="#SNOW.minimize"><code>SNOW.minimize</code></a> — <span class="docstring-category">Function</span></header><section><div><pre><code class="language-julia">minimize(func!, x0, ng, lx=-Inf, ux=Inf, lg=-Inf, ug=0.0, options=Options())</code></pre><p>solve the optimization problem</p><p><span>$\text{minimize} \quad  f(x) \\$</span> <span>$\text{subject to} \quad  l_g \le g(x) \le u_g \\$</span> <span>$\quad\quad l_x \le x \le u_x$</span></p><p><code>f = func!(g, x)</code>, unless user-supplied derivatives then: <code>f = func!(g, df, dg, x)</code></p><p>equality constraint for the ith constraint: <code>lg[i] = ug[i]</code></p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/byuflowlab/SNOW.jl/blob/c9c4b1f4f055d8799b1e86fa0bb2c5a530fcefe4/src/interface.jl#LL40-L52">source</a></section></article></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="quickstart.html">« Quick Start</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Monday 22 February 2021 19:04">Monday 22 February 2021</span>. Using Julia version 1.5.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
