@@ -3,7 +3,7 @@
 \text{minimize} &amp;\quad  f(x)  \\
 \text{subject to} &amp;\quad  l_g \le g(x) \le u_g  \\
     &amp;\quad l_x \le x \le u_x
-\end{aligned}\]</p><p>Equality constraints can be specified by setting <span>${l_g}_i = {u_g}_i$</span>.  The expected function signature is:</p><pre><code class="language-julia">f = func!(g, x)</code></pre><p>where <span>$g$</span> is modified in-place.</p><p>We start by loading the package.</p><pre><code class="language-julia">using SNOW</code></pre><p>Next, we define the function we wish to optimize.  </p><pre><code class="language-julia">function simple!(g, x)
+\end{aligned}\]</p><p>Equality constraints can be specified by setting <span>${l_g}_i = {u_g}_i$</span>.  The expected function signature is:</p><pre><code class="language-julia">f = func!(g, x)</code></pre><p>where <span>$g$</span> is modified in-place.  The optimizer returns <span>$x^*, f^*$</span>, an information message regarding how the algorithm terminated, and potentially a struct with additional solver-specific outputs.</p><p>We start by loading the package.</p><pre><code class="language-julia">using SNOW</code></pre><div class="admonition is-info"><header class="admonition-header">Snopt</header><div class="admonition-body"><p>If you want to use Snopt as the optimizer you need to build <a href="https://github.com/byuflowlab/Snopt.jl">Snopt.jl</a> separately and load the package separate from this one <code>using Snopt</code> (either before or after <code>using SNOW</code>).  It can&#39;t be loaded by default because the code is not freely available.  In this example we use Ipopt for the optimization as it is freely available.</p></div></div><p>Next, we define the function we wish to optimize.  </p><pre><code class="language-julia">function simple!(g, x)
     # objective
     f = 4*x[1]^2 - x[1] - x[2] - 2.5
 
@@ -19,7 +19,7 @@ xopt, fopt, info = minimize(simple!, x0, ng)</code></pre><p>While the defaults a
 lx = [-5.0, -5]  # lower bounds on x
 ux = [5.0, 5]  # upper bounds on x
 ng = 3  # number of constraints
-lg = -Inf*one(ng)  # lower bounds on g
+lg = -Inf*ones(ng)  # lower bounds on g
 ug = zeros(ng)  # upper bounds on g
 options = Options(solver=IPOPT())  # choosing IPOPT solver
 
@@ -76,10 +76,10 @@ Number of inequality constraint evaluations          = 13
 Number of equality constraint Jacobian evaluations   = 0
 Number of inequality constraint Jacobian evaluations = 12
 Number of Lagrangian Hessian evaluations             = 0
-Total CPU secs in IPOPT (w/o function evaluations)   =      0.124
+Total CPU secs in IPOPT (w/o function evaluations)   =      0.127
 Total CPU secs in NLP function evaluations           =      0.003
 
 EXIT: Optimal Solution Found.
 xstar = [0.1644378582645418, 2.127156813219299]
 fstar = -4.683435434561322
-info = Solve_Succeeded</pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="index.html">« Home</a><a class="docs-footer-nextpage" href="guide.html">Guide »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Monday 22 February 2021 19:04">Monday 22 February 2021</span>. Using Julia version 1.5.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+info = Solve_Succeeded</pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="index.html">« Home</a><a class="docs-footer-nextpage" href="guide.html">Guide »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Friday 12 March 2021 15:33">Friday 12 March 2021</span>. Using Julia version 1.5.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
