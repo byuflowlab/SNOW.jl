@@ -9,13 +9,15 @@ function optimize(solver::AbstractSolver, cache, x0, lx, ux, lg, ug, rows, cols)
 end
 
 """
-    Options(;sparsity=DensePattern(), derivatives=FD("forward"), solver=IPOPT())
+    Options(;sparsity=DensePattern(), derivatives=ForwardFD(), solver=IPOPT())
 
 Options for SNOW.  Default is dense, forward finite differencing, and IPOPT.
 
 # Arguments
 - `sparsity::AbstractSparsityPattern`: specify sparsity pattern
 - `derivatives::AbstractDiffMethod`: specific differentiation methods to use
+    or `derivatives::Vector{AbstractDiffMethod}`: vector of length two, 
+    first for gradient differentiation method, second for jacobian differentiation method
 - `solver::AbstractSolver`: specificy which optimizer to use
 """
 struct Options{T1,T2,T3}
@@ -25,7 +27,7 @@ struct Options{T1,T2,T3}
 end
 
 # defaults
-Options(; sparsity=DensePattern(), derivatives=FD("forward"), solver=IPOPT()
+Options(; sparsity=DensePattern(), derivatives=ForwardFD(), solver=IPOPT()
     ) = Options(sparsity, derivatives, solver)
 
 

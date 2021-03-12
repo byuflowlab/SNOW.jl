@@ -6,18 +6,20 @@ SNOW wraps multiple packages to make it easier to efficiently compute derivative
 
 Caches are created pre-optimization so that zero (or near zero) allocations occur during optimization.  If you wish to fully take advantage of this speed, your own code should also not allocate.  We also reuse outputs where possible to avoid additional unnecessary function calls.
 
+We use [FiniteDiff.jl](https://github.com/JuliaDiff/FiniteDiff.jl) for finite differencing and complex step, [ForwardDiff.jl](https://github.com/JuliaDiff/ForwardDiff.jl) for forward-mode AD, and [ReverseDiff.jl](https://github.com/JuliaDiff/ReverseDiff.jl) for reverse-mode AD.  There is some limited support of [Zygote.jl](https://github.com/FluxML/Zygote.jl) (just gradients not Jacobians currently) although it requires that your code does not mutate arrays.
+
 
 ```@example dense
 using SNOW
 
 # forward finite difference
-options = Options(derivatives=FD("forward"))
+options = Options(derivatives=ForwardFD())
 
 # central finite difference
-options = Options(derivatives=FD("central"))
+options = Options(derivatives=CentralFD())
 
 # complex step
-options = Options(derivatives=FD("complex"))
+options = Options(derivatives=ComplexStep())
 
 # forward-mode algorithmic differentiation
 options = Options(derivatives=ForwardAD())
@@ -111,7 +113,7 @@ sp  = SparsePattern(ForwardAD(), example, ng, lx, ux)
 or with central differencing
 
 ```@example sp
-sp = SparsePattern(FD("central"), example, ng, lx, ux)
+sp = SparsePattern(CentralFD(), example, ng, lx, ux)
 ```
 
 Alternative approach include specifying the three points directly:
@@ -184,7 +186,6 @@ options = Options(;solver)
 
 xopt, fopt, info = minimize(simple!, x0, ng, lx, ux, lg, ug, options)
 ```
-
 SNOPT has three optional argument: a dictionary of snopt-specific options (see Snopt documentation), a `Snopt.Names` object to define custom names in the output file (see <https://github.com/byuflowlab/Snopt.jl>), and a warmstart object (explained below).
 
 ```@docs
@@ -193,9 +194,10 @@ SNOPT
 
 Snopt also returns a fourth output, which is a struct `Snopt.Out` containing information like the number of iterations, function calls, solve time, constraint values, and a warm start object.  That warm start object can be put back in as an input for a later run (it contains final values for x, f, Lagrange multipliers, etc.)
 
-The below example shows setting options, extracting some outputs, and using a warm start.
+The below example shows setting options, extracting some outputs, and using a warm start.  Note that Snopt must be loaded separately.
 
 ```@example snoptions
+using Snopt
 using SNOW
 
 function fun(g, x)

@@ -12,13 +12,21 @@ Equality constraints can be specified by setting ``{l_g}_i = {u_g}_i``.  The exp
 ```julia
 f = func!(g, x)
 ```
-where ``g`` is modified in-place.
+where ``g`` is modified in-place.  The optimizer returns ``x^*, f^*``, an information message regarding how the algorithm terminated, and potentially a struct with additional solver-specific outputs.
+
+
 
 We start by loading the package.
 
 ```@example opt1
 using SNOW
 ```
+
+!!! note "Snopt" 
+
+    If you want to use Snopt as the optimizer you need to build [Snopt.jl](https://github.com/byuflowlab/Snopt.jl) separately and load the package separate from this one ```using Snopt``` (either before or after ```using SNOW```).  It can't be loaded by default because the code is not freely available.  In this example we use Ipopt for the optimization as it is freely available.
+
+
 
 Next, we define the function we wish to optimize.  
 
@@ -51,7 +59,7 @@ x0 = [1.0; 2.0]  # starting point
 lx = [-5.0, -5]  # lower bounds on x
 ux = [5.0, 5]  # upper bounds on x
 ng = 3  # number of constraints
-lg = -Inf*one(ng)  # lower bounds on g
+lg = -Inf*ones(ng)  # lower bounds on g
 ug = zeros(ng)  # upper bounds on g
 options = Options(solver=IPOPT())  # choosing IPOPT solver
 

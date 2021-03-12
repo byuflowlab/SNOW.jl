@@ -3,6 +3,7 @@ using Test
 using Zygote
 
 checkallocations = false
+snopttest = false
 
 @testset "derivatives" begin
 
@@ -49,7 +50,7 @@ SNOW.evaluate!(g, df, dg, x, cache)
 @test dg == [-2.0, 0.0, 2*x[1], 1.0, -1.0, 0.0]
 
 # finite diff
-cache = SNOW.createcache(DensePattern(), FD("forward"), test1!, nx, ng)
+cache = SNOW.createcache(DensePattern(), ForwardFD(), test1!, nx, ng)
 SNOW.evaluate!(g, df, dg, x, cache)
 
 @test isapprox(df, [2*x[1]; -1.0])
@@ -75,54 +76,54 @@ SNOW.evaluate!(g, df, dg, x, cache)
 
 end
 
-if checkallocations
-# -------- test allocations --------------
-    using BenchmarkTools
+# if checkallocations
+# # -------- test allocations --------------
+#     using BenchmarkTools
 
-    function test2!(g, x)
-        f = x[1]^2 - x[2]
+#     function test2!(g, x)
+#         f = x[1]^2 - x[2]
         
-        Zygote.ignore() do
-            nx = length(x)
-            for i = 1:nx
-                g[i] = x[i]^2
-            end
-            g[nx+1:end] .= x[1]
-        end
-        return f
-    end
+#         Zygote.ignore() do
+#             nx = length(x)
+#             for i = 1:nx
+#                 g[i] = x[i]^2
+#             end
+#             g[nx+1:end] .= x[1]
+#         end
+#         return f
+#     end
 
-    nx = 300
-    ng = 500
-    g = zeros(ng)
-    df = zeros(nx)
-    dg = zeros(ng*nx)
-    x = 2*ones(nx)
-    cache = SNOW.createcache(DensePattern(), ForwardAD(), test2!, nx, ng)
-    @btime SNOW.evaluate!($g, $df, $dg, $x, $cache)
-    # 577.123 μs (6 allocations: 2.30 MiB)
+#     nx = 300
+#     ng = 500
+#     g = zeros(ng)
+#     df = zeros(nx)
+#     dg = zeros(ng*nx)
+#     x = 2*ones(nx)
+#     cache = SNOW.createcache(DensePattern(), ForwardAD(), test2!, nx, ng)
+#     @btime SNOW.evaluate!($g, $df, $dg, $x, $cache)
+#     # 577.123 μs (6 allocations: 2.30 MiB)
 
-    cache = SNOW.createcache(DensePattern(), ReverseAD(), test2!, nx, ng)
-    @btime SNOW.evaluate!($g, $df, $dg, $x, $cache)
-    # 4.188 ms (6 allocations: 2.30 MiB)
+#     cache = SNOW.createcache(DensePattern(), ReverseAD(), test2!, nx, ng)
+#     @btime SNOW.evaluate!($g, $df, $dg, $x, $cache)
+#     # 4.188 ms (6 allocations: 2.30 MiB)
 
-    cache = SNOW.createcache(DensePattern(), FD("forward"), test2!, nx, ng)
-    @btime SNOW.evaluate!($g, $df, $dg, $x, $cache)
-    # 358.457 μs (6 allocations: 2.30 MiB)
+#     cache = SNOW.createcache(DensePattern(), FD("forward"), test2!, nx, ng)
+#     @btime SNOW.evaluate!($g, $df, $dg, $x, $cache)
+#     # 358.457 μs (6 allocations: 2.30 MiB)
 
-    lx = -5*ones(nx)
-    ux = 5*ones(nx)
-    sp = SparsePattern(ForwardAD(), test2!, ng, lx, ux)
-    dg = zeros(length(sp.rows))
-    cache = SNOW.createcache(sp, [ReverseAD(), ForwardAD()], test2!, nx, ng)
-    @btime SNOW.evaluate!($g, $df, $dg, $x, $cache)
-    # 17.391 μs (0 allocations: 0 bytes)
+#     lx = -5*ones(nx)
+#     ux = 5*ones(nx)
+#     sp = SparsePattern(ForwardAD(), test2!, ng, lx, ux)
+#     dg = zeros(length(sp.rows))
+#     cache = SNOW.createcache(sp, [ReverseAD(), ForwardAD()], test2!, nx, ng)
+#     @btime SNOW.evaluate!($g, $df, $dg, $x, $cache)
+#     # 17.391 μs (0 allocations: 0 bytes)
 
-    cache = SNOW.createcache(sp, [RevZyg(), ForwardAD()], test2!, nx, ng)
-    @btime SNOW.evaluate!($g, $df, $dg, $x, $cache)
-    # 9.865 μs (6 allocations: 11.63 KiB)
-end
-# ----------------------------------------
+#     cache = SNOW.createcache(sp, [RevZyg(), ForwardAD()], test2!, nx, ng)
+#     @btime SNOW.evaluate!($g, $df, $dg, $x, $cache)
+#     # 9.865 μs (6 allocations: 11.63 KiB)
+# end
+# # ----------------------------------------
 
 
 @testset "optimization" begin
@@ -181,7 +182,7 @@ lx = [0.0; 0.0]
 ux = [65.0; 70.0]
 
 ng = 3
-options = Options(solver=IPOPT(), derivatives=FD("forward"))
+options = Options(solver=IPOPT(), derivatives=ForwardFD())
 xopt, fopt, info, out = minimize(barnes, x0, ng, lx, ux, -Inf, 0.0, options)
 
 
@@ -190,22 +191,23 @@ xopt, fopt, info, out = minimize(barnes, x0, ng, lx, ux, -Inf, 0.0, options)
 @test isapprox(fopt, -31.6368; atol=1e-4)
 @test info == :Solve_Succeeded
 
+if snopttest
+    options = Options(solver=SNOPT(), derivatives=ForwardAD())
+    xopt, fopt, info, out = minimize(barnes, x0, ng, lx, ux, -Inf, 0.0, options)
 
-options = Options(solver=SNOPT(), derivatives=ForwardAD())
-xopt, fopt, info, out = minimize(barnes, x0, ng, lx, ux, -Inf, 0.0, options)
+    @test isapprox(xopt[1], 49.5263; atol=1e-4)
+    @test isapprox(xopt[2], 19.6228; atol=1e-4)
+    @test isapprox(fopt, -31.6368; atol=1e-4)
+    @test info == "Finished successfully: optimality conditions satisfied"
 
-@test isapprox(xopt[1], 49.5263; atol=1e-4)
-@test isapprox(xopt[2], 19.6228; atol=1e-4)
-@test isapprox(fopt, -31.6368; atol=1e-4)
-@test info == "Finished successfully: optimality conditions satisfied"
+    options = Options(solver=SNOPT(), derivatives=ComplexStep())
+    xopt, fopt, info, out = minimize(barnes, x0, ng, lx, ux, -Inf, 0.0, options)
 
-options = Options(solver=SNOPT(), derivatives=FD("complex"))
-xopt, fopt, info, out = minimize(barnes, x0, ng, lx, ux, -Inf, 0.0, options)
-
-@test isapprox(xopt[1], 49.5263; atol=1e-4)
-@test isapprox(xopt[2], 19.6228; atol=1e-4)
-@test isapprox(fopt, -31.6368; atol=1e-4)
-@test info == "Finished successfully: optimality conditions satisfied"
+    @test isapprox(xopt[1], 49.5263; atol=1e-4)
+    @test isapprox(xopt[2], 19.6228; atol=1e-4)
+    @test isapprox(fopt, -31.6368; atol=1e-4)
+    @test info == "Finished successfully: optimality conditions satisfied"
+end
 
 
 function sparsegrad(g, x)
@@ -226,13 +228,15 @@ ng = 2
 # detect sparsity pattern
 sp = SparsePattern(ForwardAD(), sparsegrad, ng, lx, ux)
 
-options = Options(solver=SNOPT(), derivatives=[ReverseAD(), ForwardAD()], sparsity=sp)
-xopt, fopt, info, out = minimize(sparsegrad, x0, ng, lx, ux, -Inf, 0.0, options)
+if snopttest
+    options = Options(solver=SNOPT(), derivatives=[ReverseAD(), ForwardAD()], sparsity=sp)
+    xopt, fopt, info, out = minimize(sparsegrad, x0, ng, lx, ux, -Inf, 0.0, options)
 
-@test isapprox(xopt[1], 1.0; atol=1e-6)
-@test isapprox(xopt[2], 2.0; atol=1e-6)
-@test isapprox(fopt, -1.0; atol=1e-5)
-@test info == "Finished successfully: optimality conditions satisfied"
+    @test isapprox(xopt[1], 1.0; atol=1e-6)
+    @test isapprox(xopt[2], 2.0; atol=1e-6)
+    @test isapprox(fopt, -1.0; atol=1e-5)
+    @test info == "Finished successfully: optimality conditions satisfied"
+end
 
 end
 

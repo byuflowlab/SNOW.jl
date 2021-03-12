@@ -1,3 +1,4 @@
+using Snopt
 using SNOW
 using Documenter
 

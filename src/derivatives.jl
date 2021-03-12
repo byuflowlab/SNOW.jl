@@ -1,6 +1,5 @@
 
 
-
 # ---------- differentiation method --------------
 
 abstract type AbstractDiffMethod end
@@ -8,21 +7,22 @@ abstract type AbstractDiffMethod end
 struct ForwardAD <: AbstractDiffMethod end
 struct ReverseAD <: AbstractDiffMethod end
 struct RevZyg <: AbstractDiffMethod end  # only used for gradients (not jacobians)
-struct FD{TS} <: AbstractDiffMethod
-    step::TS  # forward, central, complex
-end
+struct ForwardFD <: AbstractDiffMethod end
+struct CentralFD <: AbstractDiffMethod end
+struct ComplexStep <: AbstractDiffMethod end
 struct UserDeriv <: AbstractDiffMethod end   # user-specified derivatives
 
+FD = Union{ForwardFD, CentralFD, ComplexStep}
 
 """
 convert to type used in FiniteDiff package
 """
-function finitediff_type(step)
-    if step == "forward"
+function finitediff_type(dtype)
+    if isa(dtype, ForwardFD)
         fdtype = Val{:forward}
-    elseif step == "central"
+    elseif isa(dtype, CentralFD)
         fdtype = Val{:central}
-    elseif step == "complex"
+    elseif isa(dtype, ComplexStep)
         fdtype = Val{:complex}
     end
     return fdtype
@@ -105,7 +105,7 @@ spots are assumed to always be zero.
 """
 function SparsePattern(dtype::FD, func!, ng, x1, x2, x3)
 
-    fdtype = finitediff_type(dtype.step)
+    fdtype = finitediff_type(dtype)
     cache = FiniteDiff.JacobianCache(x1, zeros(ng), fdtype)
 
     nx = length(x1)
@@ -294,7 +294,7 @@ function createcache(sp::DensePattern, dtype::FD, func!, nx, ng)
     Jwork = zeros(1 + ng, nx)
     
     x = zeros(nx)
-    fdtype = finitediff_type(dtype.step)
+    fdtype = finitediff_type(dtype)
     cache = FiniteDiff.JacobianCache(x, fgwork, fdtype)
 
     return DenseCache(combine!, fgwork, Jwork, cache, dtype)
@@ -477,7 +477,7 @@ end
 
 #     df = zeros(nx)
 #     x = zeros(nx)
-#     fdtype = finitediff_type(dtype.step)
+#     fdtype = finitediff_type(dtype)
 #     cache = FiniteDiff.GradientCache(df, x, fdtype)
 
 #     return GradOrJacCache(func!, nothing, cache, dtype)
@@ -594,7 +594,7 @@ function sparsejacobiancache(sp::SparsePattern, dtype::FD, func!, nx, ng)
     x = zeros(nx)
     Jsp = sparse(sp.rows, sp.cols, ones(length(sp.rows)))
     colors = SparseDiffTools.matrix_colors(Jsp)
-    fdtype = finitediff_type(dtype.step)
+    fdtype = finitediff_type(dtype)
     cache = FiniteDiff.JacobianCache(x, fdtype, colorvec=colors, sparsity=Jsp)
 
     return GradOrJacCache(func!, Jsp, cache, dtype)
