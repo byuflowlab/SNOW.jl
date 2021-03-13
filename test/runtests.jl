@@ -10,7 +10,7 @@ snopttest = false
 function test1!(g, x)
 
     f = x[1]^2 - x[2]
-    
+
     Zygote.ignore() do
         g[1] = x[2] - 2*x[1]
         g[2] = -x[2]

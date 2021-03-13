@@ -386,9 +386,8 @@ Cache for gradient using ReverseDiff
 """
 function gradientcache(dtype::ReverseAD, func!, nx, ng)
 
-    # g = zeros(ng)
     function obj(x)
-        return func!(zeros(ng), x)
+        return func!(zeros(eltype(x[1]), ng), x)
     end
 
     f_tape = ReverseDiff.GradientTape(obj, zeros(nx))
