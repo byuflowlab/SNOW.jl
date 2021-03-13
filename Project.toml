@@ -15,6 +15,7 @@ SparseDiffTools = "47a9eef4-7e08-11e9-0b38-333d64bd3804"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [compat]
+Ipopt = "0.6"
 julia = "1"
 
 [extras]
