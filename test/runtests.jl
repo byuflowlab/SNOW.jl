@@ -189,7 +189,7 @@ xopt, fopt, info, out = minimize(barnes, x0, ng, lx, ux, -Inf, 0.0, options)
 @test isapprox(xopt[1], 49.5263; atol=1e-4)
 @test isapprox(xopt[2], 19.6228; atol=1e-4)
 @test isapprox(fopt, -31.6368; atol=1e-4)
-@test info == :Solve_Succeeded
+@test info == :Solve_Succeeded || info == :Solved_To_Acceptable_Level
 
 if snopttest
     options = Options(solver=SNOPT(), derivatives=ForwardAD())
