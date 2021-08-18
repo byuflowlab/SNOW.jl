@@ -19,5 +19,5 @@ Features:
 To Install
 
 ```julia
-] add https://github.com/byuflowlab/SNOW.jl
+] add SNOW
 ```
