@@ -2,7 +2,7 @@ module SNOW
 
 using ForwardDiff
 using ReverseDiff
-using Zygote
+# using Zygote
 using DiffResults
 using FiniteDiff
 using SparseArrays

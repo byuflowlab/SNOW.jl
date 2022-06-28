@@ -11,11 +11,11 @@ function test1!(g, x)
 
     f = x[1]^2 - x[2]
 
-    Zygote.ignore() do
-        g[1] = x[2] - 2*x[1]
-        g[2] = -x[2]
-        g[3] = x[1]^2
-    end
+    # Zygote.ignore() do
+    g[1] = x[2] - 2*x[1]
+    g[2] = -x[2]
+    g[3] = x[1]^2
+    # end
     return f
 end
 
@@ -64,13 +64,13 @@ SNOW.evaluate!(g, df, dg, x, cache)
 @test df == [2*x[1]; -1.0]
 @test dg == [-2.0, 2*x[1], 1.0, -1.0]
 
-# sparse with zygote and forward
-dg = zeros(length(sp.rows))
-cache = SNOW.createcache(sp, [RevZyg(), ForwardAD()], test1!, nx, ng)
-SNOW.evaluate!(g, df, dg, x, cache)
+# # sparse with zygote and forward
+# dg = zeros(length(sp.rows))
+# cache = SNOW.createcache(sp, [RevZyg(), ForwardAD()], test1!, nx, ng)
+# SNOW.evaluate!(g, df, dg, x, cache)
 
-@test df == [2*x[1]; -1.0]
-@test dg == [-2.0, 2*x[1], 1.0, -1.0]
+# @test df == [2*x[1]; -1.0]
+# @test dg == [-2.0, 2*x[1], 1.0, -1.0]
 
 # ----------------------------------------
 
