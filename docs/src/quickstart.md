@@ -27,6 +27,9 @@ using SNOW
     If you want to use Snopt as the optimizer you need to build [Snopt.jl](https://github.com/byuflowlab/Snopt.jl) separately and load the package separate from this one ```using Snopt``` (either before or after ```using SNOW```).  It can't be loaded by default because the code is not freely available.  In this example we use Ipopt for the optimization as it is freely available.
 
 
+!!! note "ReverseAD" 
+
+Similar to "Snopt" `ReverseAD` is not available by default. You need to load the `ReverseDiff` package in order to use `ReverseAD`
 
 Next, we define the function we wish to optimize.  
 
