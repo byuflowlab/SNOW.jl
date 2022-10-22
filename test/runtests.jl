@@ -1,6 +1,6 @@
 using SNOW
 using Test
-using Zygote
+import ReverseDiff
 
 checkallocations = false
 snopttest = false
