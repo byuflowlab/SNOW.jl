@@ -1,7 +1,7 @@
 name = "SNOW"
 uuid = "105f6ee8-0889-46b1-9d4b-65e03cbc8f13"
 authors = ["Andrew Ning <aning@byu.edu> and contributors"]
-version = "0.3.0"
+version = "0.3.1"
 
 [deps]
 DiffResults = "163ba53b-c6d8-5494-b064-1a9d43ac40c5"
