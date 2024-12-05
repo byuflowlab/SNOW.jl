@@ -5,7 +5,11 @@
 
 abstract type AbstractDiffMethod end
 
-struct ForwardAD <: AbstractDiffMethod end
+struct ForwardAD <: AbstractDiffMethod
+    dualtag::Union{Nothing, Missing} # tag for dual numbers (missing=automatic)
+    ForwardAD(; dualtag=missing) = new(dualtag)
+end
+
 struct ReverseAD <: AbstractDiffMethod end
 # struct RevZyg <: AbstractDiffMethod end  # only used for gradients (not jacobians)
 struct ForwardFD <: AbstractDiffMethod end
@@ -186,9 +190,11 @@ function createcache(sp::DensePattern, dtype::ForwardAD, func!, nx, ng)
         fg[1] = func!(@view(fg[2:end]), x)
     end
 
+    tag = ismissing(dtype.dualtag) ? combine! : dtype.dualtag
+
     g = zeros(1 + ng)
     x = zeros(nx)
-    config = ForwardDiff.JacobianConfig(combine!, g, x)
+    config = ForwardDiff.JacobianConfig(tag, g, x)
     J = DiffResults.JacobianResult(g, x)
 
     return DenseCache(combine!, g, J, config, dtype)
