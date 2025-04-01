@@ -105,17 +105,8 @@ function optimize(solver::IPOPT, cache, x0, lx, ux, lg, ug, rows, cols)
     for (key, value) in options
         addOption(prob, key, value)
     end
-
-    # open output file
-    filename = "ipopt.out"
-    print_level = 5
-    if haskey(options, "output_file")
-        filename = options["output_file"]
-    end
-    if haskey(options, "print_level")
-        print_level = options["print_level"]
-    end
-    Ipopt.OpenIpoptOutputFile(prob, filename, print_level)
+    addOption(prob, "output_file", get(options, "output_file", "ipopt.out"))
+    addOption(prob, "print_level", get(options, "print_level", 5))
 
     # solve problem
     prob.x = x0
