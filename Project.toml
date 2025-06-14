@@ -1,7 +1,7 @@
 name = "SNOW"
 uuid = "105f6ee8-0889-46b1-9d4b-65e03cbc8f13"
 authors = ["Andrew Ning <aning@byu.edu> and contributors"]
-version = "0.3.1"
+version = "0.3.2"
 
 [deps]
 DiffResults = "163ba53b-c6d8-5494-b064-1a9d43ac40c5"
@@ -16,7 +16,7 @@ SparseDiffTools = "47a9eef4-7e08-11e9-0b38-333d64bd3804"
 [compat]
 DiffResults = "1.0"
 FiniteDiff = "2.8"
-ForwardDiff = "0.10"
+ForwardDiff = "0.10, 1"
 Ipopt = "1.0"
 Requires = "1.1"
 ReverseDiff = "1.9"
