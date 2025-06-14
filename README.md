@@ -1,7 +1,7 @@
 # Sparse Nonlinear Optimization Wrapper (SNOW)
 
-[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](http://flow.byu.edu/SNOW.jl/index.html)
-[![Build Status](https://github.com/byuflowlab/SNOW.jl/workflows/CI/badge.svg)](https://github.com/byuflowlab/SNOW.jl/actions)
+[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://flow.byu.edu/SNOW.jl/stable)
+[![Build Status](https://github.com/byuflowlab/SNOW.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/byuflowlab/SNOW.jl/actions/workflows/ci.yml)
 <!--
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://byuflowlab.github.io/SNOW.jl/stable)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://byuflowlab.github.io/SNOW.jl/dev)
