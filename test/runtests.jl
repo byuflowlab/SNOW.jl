@@ -72,6 +72,30 @@ SNOW.evaluate!(g, df, dg, x, cache)
 # @test df == [2*x[1]; -1.0]
 # @test dg == [-2.0, 2*x[1], 1.0, -1.0]
 
+# sparse with forward finite differencing jacobian
+dg = zeros(length(sp.rows))
+cache = SNOW.createcache(sp, [ReverseAD(), ForwardFD()], test1!, nx, ng)
+SNOW.evaluate!(g, df, dg, x, cache)
+
+@test isapprox(df, [2*x[1]; -1.0])
+@test isapprox(dg, [-2.0, 2*x[1], 1.0, -1.0], atol=1e-5)
+
+# sparse with central finite differencing jacobian
+dg = zeros(length(sp.rows))
+cache = SNOW.createcache(sp, [ReverseAD(), CentralFD()], test1!, nx, ng)
+SNOW.evaluate!(g, df, dg, x, cache)
+
+@test isapprox(df, [2*x[1]; -1.0])
+@test isapprox(dg, [-2.0, 2*x[1], 1.0, -1.0], atol=1e-5)
+
+# sparse with complex step jacobian
+dg = zeros(length(sp.rows))
+cache = SNOW.createcache(sp, [ReverseAD(), ComplexStep()], test1!, nx, ng)
+SNOW.evaluate!(g, df, dg, x, cache)
+
+@test isapprox(df, [2*x[1]; -1.0])
+@test isapprox(dg, [-2.0, 2*x[1], 1.0, -1.0], atol=1e-5)
+
 # ----------------------------------------
 
 end

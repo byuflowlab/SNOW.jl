@@ -595,7 +595,7 @@ function sparsejacobiancache(sp::SparsePattern, dtype::FD, func!, nx, ng)
     Jsp = sparse(sp.rows, sp.cols, ones(length(sp.rows)))
     colors = SparseDiffTools.matrix_colors(Jsp)
     fdtype = finitediff_type(dtype)
-    cache = FiniteDiff.JacobianCache(x, fdtype, colorvec=colors, sparsity=Jsp)
+    cache = FiniteDiff.JacobianCache(x, g, fdtype, colorvec=colors, sparsity=Jsp)
 
     return GradOrJacCache(func!, Jsp, cache, dtype)
 end
