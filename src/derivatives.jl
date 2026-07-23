@@ -506,13 +506,85 @@ Cache for sparse jacobian using ForwardDiff
 """
 function sparsejacobiancache(sp::SparsePattern, dtype::ForwardAD, func!, nx, ng)
 
-    g = zeros(ng)
-    x = zeros(nx)
     Jsp = sparse(sp.rows, sp.cols, ones(length(sp.rows)))
-    colors = SparseDiffTools.matrix_colors(Jsp)
-    cachesp = SparseDiffTools.ForwardColorJacCache(func!, x, dx=g, colorvec=colors, sparsity=Jsp)
+    Jwork = copy(Jsp)
+    fill!(nonzeros(Jwork), zero(eltype(Jwork)))
+    colors = SparseMatrixColorings.fast_coloring(
+        Jsp,
+        SparseMatrixColorings.ColoringProblem(; structure = :nonsymmetric, partition = :column),
+        SparseMatrixColorings.GreedyColoringAlgorithm(),
+    )
+    ncolor = isempty(colors) ? 0 : maximum(colors)
 
-    return GradOrJacCache(func!, Jsp, cachesp, dtype)
+    x0 = zeros(nx)
+    T = eltype(x0)
+    if ncolor == 0
+        cache = (
+            x0 = x0,
+            colorvec = colors,
+            color_partials = Vector{Vector{NTuple{1,T}}}(undef, 0),
+            chunksize = 0,
+            maxcolor = 0,
+            t = similar(x0),
+            fwork = similar(x0, ng),
+            dx = zeros(eltype(x0), ng),
+            ncols = nx,
+        )
+        return GradOrJacCache(func!, Jwork, cache, dtype)
+    end
+
+    chunksize = ForwardDiff.pickchunksize(ncolor)
+    color_partials = _generate_chunked_partials(colors, ncolor, chunksize, T)
+    tag = typeof(ForwardDiff.Tag(func!, eltype(x0)))
+    DT = ForwardDiff.Dual{tag,eltype(x0),chunksize}
+    t = similar(x0, DT)
+    partial_i = color_partials[1]
+    for i in eachindex(t)
+        t[i] = DT(x0[i], ForwardDiff.Partials(partial_i[i]))
+    end
+
+    fwork = similar(t, ng)
+
+    cache = (
+        x0 = x0,
+        colorvec = colors,
+        color_partials = color_partials,
+        chunksize = chunksize,
+        maxcolor = ncolor,
+        t = t,
+        fwork = fwork,
+        dx = zeros(eltype(x0), ng),
+        ncols = nx,
+    )
+
+    return GradOrJacCache(func!, Jwork, cache, dtype)
+end
+
+
+@generated function _partials_view_tup(partials, j, i, ::Val{chunksize}) where {chunksize}
+    :(Base.@ntuple $chunksize k -> partials[j, (i - 1) * $chunksize + k])
+end
+
+function _generate_chunked_partials(colorvec, ncolor::Int, chunksize::Int, ::Type{T}) where {T}
+    maxcolor = ncolor
+    num_of_chunks = cld(maxcolor, chunksize)
+    padding_size = (chunksize - (maxcolor % chunksize)) % chunksize
+    partials = Matrix{T}(undef, length(colorvec), maxcolor + padding_size)
+    fill!(partials, zero(T))
+    for i in eachindex(colorvec)
+        partials[i, colorvec[i]] = one(T)
+    end
+
+    chunked_partials = Vector{Vector{NTuple{chunksize, T}}}(undef, num_of_chunks)
+    for i in 1:num_of_chunks
+        tmp = Vector{NTuple{chunksize, T}}(undef, size(partials, 1))
+        for j in 1:size(partials, 1)
+            tmp[j] = _partials_view_tup(partials, j, i, Val(chunksize))
+        end
+        chunked_partials[i] = tmp
+    end
+
+    return chunked_partials
 end
 
 
@@ -528,8 +600,46 @@ evaluate sparse jacobian using ForwardDiff
 """
 function sparsejacobian!(dg, x, cache::GradOrJacCache{T1,T2,T3,T4}
     where {T1,T2,T3,T4<:ForwardAD})
-    
-    SparseDiffTools.forwarddiff_color_jacobian!(cache.work, cache.f!, x, cache.cache)
+
+    copyto!(cache.cache.x0, x)
+    cachei = cache.cache
+    f = cache.f!
+    Jwork = cache.work
+    fill!(nonzeros(Jwork), zero(eltype(Jwork)))
+    if cachei.maxcolor == 0
+        dg[:] = Jwork.nzval
+        return nothing
+    end
+
+    color_i = 1
+    vecx = cachei.x0
+    colorvec = cachei.colorvec
+    p = cachei.color_partials
+    t = cachei.t
+    fwork = cachei.fwork
+    dx = cachei.dx
+    for i in eachindex(p)
+        partial_i = p[i]
+        for j in eachindex(t)
+            t[j] = eltype(t)(vecx[j], ForwardDiff.Partials(partial_i[j]))
+        end
+        f(fwork, t)
+        for j in 1:cachei.chunksize
+            for k in eachindex(dx)
+                dx[k] = ForwardDiff.partials(fwork[k], j)
+            end
+            FiniteDiff._colorediteration!(
+                Jwork,
+                dx,
+                colorvec,
+                color_i,
+                cachei.ncols,
+            )
+            color_i += 1
+            color_i > cachei.maxcolor && break
+        end
+        color_i > cachei.maxcolor && break
+    end
     dg[:] = cache.work.nzval
 
     return nothing
@@ -579,7 +689,7 @@ end
 # end
 
 """
-    sparsejacobiancache(sp::SparsePattern, dtype::ForwardAD, func!, nx, ng)
+    sparsejacobiancache(sp::SparsePattern, dtype::FD, func!, nx, ng)
 
 Cache for sparse jacobian using finite differencing
 
@@ -590,12 +700,22 @@ Cache for sparse jacobian using finite differencing
 """
 function sparsejacobiancache(sp::SparsePattern, dtype::FD, func!, nx, ng)
 
-    g = zeros(ng)
     x = zeros(nx)
-    Jsp = sparse(sp.rows, sp.cols, ones(length(sp.rows)))
-    colors = SparseDiffTools.matrix_colors(Jsp)
+    Jsp = sparse(sp.rows, sp.cols, ones(length(sp.rows)), ng, nx)
     fdtype = finitediff_type(dtype)
-    cache = FiniteDiff.JacobianCache(x, fdtype, colorvec=colors, sparsity=Jsp)
+    colors = SparseMatrixColorings.fast_coloring(
+        Jsp,
+        SparseMatrixColorings.ColoringProblem(; structure = :nonsymmetric, partition = :column),
+        SparseMatrixColorings.GreedyColoringAlgorithm(),
+    )
+
+    fcache = FiniteDiff.JacobianCache(x, zeros(ng), fdtype, colorvec = colors, sparsity = Jsp)
+    cache = (
+        Jwork = zeros(ng, nx),
+        rows = sp.rows,
+        cols = sp.cols,
+        fcache = fcache,
+    )
 
     return GradOrJacCache(func!, Jsp, cache, dtype)
 end
@@ -614,7 +734,11 @@ evaluate sparse jacobian using finite differencing
 function sparsejacobian!(dg, x, cache::GradOrJacCache{T1,T2,T3,T4}
     where {T1,T2,T3,T4<:FD})
 
-    FiniteDiff.finite_difference_jacobian!(cache.work, cache.f!, x, cache.cache)
+    FiniteDiff.finite_difference_jacobian!(cache.cache.Jwork, cache.f!, x, cache.cache.fcache)
+
+    for i in eachindex(cache.work.nzval)
+        cache.work.nzval[i] = cache.cache.Jwork[cache.cache.rows[i], cache.cache.cols[i]]
+    end
     dg[:] = cache.work.nzval
     
     return nothing

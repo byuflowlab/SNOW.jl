@@ -10,7 +10,7 @@
 - Easy switching between various differentiation methods: ForwardDiff, ReverseDiff, Zygote, FiniteDiff (forward, central, complex step), and user-defined derivatives.
 - Derivative calculations are all non-allocating during optimization.
 - Outputs are also cached as applicable to avoid unnecessary function calls.
-- Methods are provided to help determine sparsity patterns, sparse Jacobians can be updated efficiently with SparseDiffTools (using graph coloring), and the sparsity structure is passed to the solvers.
+- Methods are provided to help determine sparsity patterns, sparse Jacobians can be updated efficiently with SparseMatrixColorings (using graph coloring), and the sparsity structure is passed to the solvers.
 
 
 **Documentation**:

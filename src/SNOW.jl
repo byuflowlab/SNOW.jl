@@ -6,7 +6,7 @@ using ReverseDiff
 using DiffResults
 using FiniteDiff
 using SparseArrays
-using SparseDiffTools
+using SparseMatrixColorings
 using Requires
 using Ipopt
 
