@@ -561,27 +561,19 @@ function sparsejacobiancache(sp::SparsePattern, dtype::ForwardAD, func!, nx, ng)
 end
 
 
-@generated function _partials_view_tup(partials, j, i, ::Val{chunksize}) where {chunksize}
-    :(Base.@ntuple $chunksize k -> partials[j, (i - 1) * $chunksize + k])
-end
-
 function _generate_chunked_partials(colorvec, ncolor::Int, chunksize::Int, ::Type{T}) where {T}
     maxcolor = ncolor
     num_of_chunks = cld(maxcolor, chunksize)
-    padding_size = (chunksize - (maxcolor % chunksize)) % chunksize
-    partials = Matrix{T}(undef, length(colorvec), maxcolor + padding_size)
-    fill!(partials, zero(T))
-    for i in eachindex(colorvec)
-        partials[i, colorvec[i]] = one(T)
-    end
 
     chunked_partials = Vector{Vector{NTuple{chunksize, T}}}(undef, num_of_chunks)
-    for i in 1:num_of_chunks
-        tmp = Vector{NTuple{chunksize, T}}(undef, size(partials, 1))
-        for j in 1:size(partials, 1)
-            tmp[j] = _partials_view_tup(partials, j, i, Val(chunksize))
+    for chunk in 1:num_of_chunks
+        color_start = (chunk - 1) * chunksize + 1
+        tmp = Vector{NTuple{chunksize, T}}(undef, length(colorvec))
+        for j in eachindex(colorvec)
+            c = colorvec[j]
+            tmp[j] = ntuple(k -> (color_start + k - 1 == c ? one(T) : zero(T)), Val(chunksize))
         end
-        chunked_partials[i] = tmp
+        chunked_partials[chunk] = tmp
     end
 
     return chunked_partials
@@ -709,11 +701,11 @@ function sparsejacobiancache(sp::SparsePattern, dtype::FD, func!, nx, ng)
         SparseMatrixColorings.GreedyColoringAlgorithm(),
     )
 
+    Jwork = copy(Jsp)
+    fill!(nonzeros(Jwork), zero(eltype(Jwork)))
     fcache = FiniteDiff.JacobianCache(x, zeros(ng), fdtype, colorvec = colors, sparsity = Jsp)
     cache = (
-        Jwork = zeros(ng, nx),
-        rows = sp.rows,
-        cols = sp.cols,
+        Jwork = Jwork,
         fcache = fcache,
     )
 
@@ -735,10 +727,7 @@ function sparsejacobian!(dg, x, cache::GradOrJacCache{T1,T2,T3,T4}
     where {T1,T2,T3,T4<:FD})
 
     FiniteDiff.finite_difference_jacobian!(cache.cache.Jwork, cache.f!, x, cache.cache.fcache)
-
-    for i in eachindex(cache.work.nzval)
-        cache.work.nzval[i] = cache.cache.Jwork[cache.cache.rows[i], cache.cache.cols[i]]
-    end
+    copyto!(cache.work.nzval, cache.cache.Jwork.nzval)
     dg[:] = cache.work.nzval
     
     return nothing

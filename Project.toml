@@ -1,7 +1,7 @@
 name = "SNOW"
 uuid = "105f6ee8-0889-46b1-9d4b-65e03cbc8f13"
-authors = ["Andrew Ning <aning@byu.edu> and contributors"]
 version = "0.3.2"
+authors = ["Andrew Ning <aning@byu.edu> and contributors"]
 
 [deps]
 DiffResults = "163ba53b-c6d8-5494-b064-1a9d43ac40c5"
@@ -12,6 +12,7 @@ Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 SparseMatrixColorings = "0a514795-09f3-496d-8182-132a7b665d35"
+Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [compat]
 DiffResults = "1.0"
@@ -21,6 +22,7 @@ Ipopt = "1.0"
 Requires = "1.1"
 ReverseDiff = "1.9"
 SparseMatrixColorings = "0.3, 0.4"
+Zygote = "0.7.12"
 julia = "1.10"
 
 [extras]
