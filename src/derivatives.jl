@@ -561,6 +561,21 @@ function sparsejacobiancache(sp::SparsePattern, dtype::ForwardAD, func!, nx, ng)
 end
 
 
+# Local helper: update sparse Jacobian J for columns matching color_i.
+# Equivalent to FiniteDiff._colorediteration! but vendored here to avoid
+# depending on an internal (underscore-prefixed) API.
+@inline function _color_jac_iteration!(J::SparseMatrixCSC, vfx, colorvec, color_i, ncols)
+    for col_index in 1:ncols
+        if colorvec[col_index] == color_i
+            for spidx in nzrange(J, col_index)
+                row_index = J.rowval[spidx]
+                J.nzval[spidx] = vfx[row_index]
+            end
+        end
+    end
+end
+
+
 @generated function _partials_view_tup(partials, j, i, ::Val{chunksize}) where {chunksize}
     :(Base.@ntuple $chunksize k -> partials[j, (i - 1) * $chunksize + k])
 end
@@ -628,7 +643,7 @@ function sparsejacobian!(dg, x, cache::GradOrJacCache{T1,T2,T3,T4}
             for k in eachindex(dx)
                 dx[k] = ForwardDiff.partials(fwork[k], j)
             end
-            FiniteDiff._colorediteration!(
+            _color_jac_iteration!(
                 Jwork,
                 dx,
                 colorvec,
