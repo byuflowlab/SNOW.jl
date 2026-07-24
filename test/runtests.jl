@@ -1,6 +1,8 @@
 using SNOW
 using Test
 using Zygote
+using ForwardDiff
+using SparseArrays
 
 checkallocations = false
 snopttest = false
@@ -73,6 +75,80 @@ SNOW.evaluate!(g, df, dg, x, cache)
 # @test dg == [-2.0, 2*x[1], 1.0, -1.0]
 
 # ----------------------------------------
+
+end
+
+
+@testset "sparse jacobian - finite differencing" begin
+
+# also exercises a trailing all-zero row/column: g[end] doesn't depend on
+# x at all, and x[end] doesn't affect any constraint. this previously
+# crashed the ForwardAD sparse cache (see SNOW.jl PR #25 review) because
+# the sparsity matrix was rebuilt without explicit (ng, nx) dimensions,
+# so a shorter colorvec than nx was produced.
+function dropped!(g, x)
+    n = length(x)
+    for i in 1:n-1
+        g[i] = x[i]^2 + sin(x[i])
+    end
+    g[n] = 1.0
+    return sum(abs2, x[1:n-1])
+end
+
+nx = 5
+ng = 5
+lx = -5*ones(nx)
+ux = 5*ones(nx)
+sp = SparsePattern(ForwardAD(), dropped!, ng, lx, ux)
+x = collect(range(0.2, 1.8, length=nx))
+Jdense = ForwardDiff.jacobian(dropped!, zeros(ng), x)
+
+# forward AD sparse jacobian (regression test for the dimension bug)
+cache = SNOW.sparsejacobiancache(sp, ForwardAD(), dropped!, nx, ng)
+dg = zeros(length(sp.rows))
+SNOW.sparsejacobian!(dg, x, cache)
+Jsparse = Matrix(sparse(sp.rows, sp.cols, dg, ng, nx))
+@test isapprox(Jsparse, Jdense; atol=1e-10)
+
+# sparse jacobians via finite differencing (previously had no test coverage at all)
+for dtype in (ForwardFD(), CentralFD(), ComplexStep())
+    cache = SNOW.sparsejacobiancache(sp, dtype, dropped!, nx, ng)
+    dgfd = zeros(length(sp.rows))
+    SNOW.sparsejacobian!(dgfd, x, cache)
+    Jsparsefd = Matrix(sparse(sp.rows, sp.cols, dgfd, ng, nx))
+    @test isapprox(Jsparsefd, Jdense; atol=1e-4)
+end
+
+end
+
+
+@testset "sparse jacobian - many colors" begin
+
+# g[1] depends on every x[i], so every column conflicts with every other
+# column in the coloring graph -> ncolors == nx. stresses the coloring path
+# well beyond the single/few-color cases covered above.
+function starfun!(g, x)
+    n = length(x)
+    g[1] = sum(x)
+    for i in 2:n
+        g[i] = x[i]^2 + 0.1*x[1]
+    end
+    return sum(abs2, x)
+end
+
+nx = 20
+ng = 20
+lx = -5*ones(nx)
+ux = 5*ones(nx)
+sp = SparsePattern(ForwardAD(), starfun!, ng, lx, ux)
+x = collect(range(0.1, 2.0, length=nx))
+Jdense = ForwardDiff.jacobian(starfun!, zeros(ng), x)
+
+cache = SNOW.sparsejacobiancache(sp, ForwardAD(), starfun!, nx, ng)
+dg = zeros(length(sp.rows))
+SNOW.sparsejacobian!(dg, x, cache)
+Jsparse = Matrix(sparse(sp.rows, sp.cols, dg, ng, nx))
+@test isapprox(Jsparse, Jdense; atol=1e-8)
 
 end
 

@@ -506,11 +506,16 @@ Cache for sparse jacobian using ForwardDiff
 """
 function sparsejacobiancache(sp::SparsePattern, dtype::ForwardAD, func!, nx, ng)
 
-    g = zeros(ng)
     x = zeros(nx)
-    Jsp = sparse(sp.rows, sp.cols, ones(length(sp.rows)))
-    colors = SparseDiffTools.matrix_colors(Jsp)
-    cachesp = SparseDiffTools.ForwardColorJacCache(func!, x, dx=g, colorvec=colors, sparsity=Jsp)
+    g = zeros(ng)
+    Jsp = sparse(sp.rows, sp.cols, ones(length(sp.rows)), ng, nx)
+
+    backend = ADTypes.AutoSparse(ADTypes.AutoForwardDiff();
+        sparsity_detector=ADTypes.KnownJacobianSparsityDetector(Jsp),
+        coloring_algorithm=SparseMatrixColorings.GreedyColoringAlgorithm())
+    prep = DifferentiationInterface.prepare_jacobian(func!, g, backend, x)
+
+    cachesp = (prep=prep, backend=backend, ybuf=g)
 
     return GradOrJacCache(func!, Jsp, cachesp, dtype)
 end
@@ -528,8 +533,9 @@ evaluate sparse jacobian using ForwardDiff
 """
 function sparsejacobian!(dg, x, cache::GradOrJacCache{T1,T2,T3,T4}
     where {T1,T2,T3,T4<:ForwardAD})
-    
-    SparseDiffTools.forwarddiff_color_jacobian!(cache.work, cache.f!, x, cache.cache)
+
+    ci = cache.cache
+    DifferentiationInterface.jacobian!(cache.f!, ci.ybuf, cache.work, ci.prep, ci.backend, x)
     dg[:] = cache.work.nzval
 
     return nothing
@@ -592,8 +598,12 @@ function sparsejacobiancache(sp::SparsePattern, dtype::FD, func!, nx, ng)
 
     g = zeros(ng)
     x = zeros(nx)
-    Jsp = sparse(sp.rows, sp.cols, ones(length(sp.rows)))
-    colors = SparseDiffTools.matrix_colors(Jsp)
+    Jsp = sparse(sp.rows, sp.cols, ones(length(sp.rows)), ng, nx)
+    colors = SparseMatrixColorings.fast_coloring(
+        Jsp,
+        SparseMatrixColorings.ColoringProblem(; structure=:nonsymmetric, partition=:column),
+        SparseMatrixColorings.GreedyColoringAlgorithm(),
+    )
     fdtype = finitediff_type(dtype)
     cache = FiniteDiff.JacobianCache(x, fdtype, colorvec=colors, sparsity=Jsp)
 
