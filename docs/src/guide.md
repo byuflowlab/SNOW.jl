@@ -138,6 +138,48 @@ nothing #hide
 
 Currently supported options are ReverseAD, or RevZyg for the gradient, and ForwardAD or FD for the Jacobian.
 
+### Coloring algorithm
+
+Sparse Jacobians are computed using graph coloring: columns (or rows) that don't share any nonzero entries are grouped into the same "color" and perturbed together, so the number of function calls per Jacobian evaluation equals the number of colors rather than the number of design variables. Fewer colors means faster evaluations, but finding the minimum possible number of colors is itself an expensive combinatorial problem, so in practice a greedy heuristic is used, and different heuristics trade off coloring quality against the one-time cost of computing the coloring when the cache is built.
+
+`ForwardAD`, `ForwardFD`, `CentralFD`, and `ComplexStep` all accept a `coloring_algorithm` keyword to control this trade-off. It accepts any `ADTypes.AbstractColoringAlgorithm`, most conveniently one of the `SparseMatrixColorings.GreedyColoringAlgorithm` variants ([SparseMatrixColorings.jl docs](https://gdalle.github.io/SparseMatrixColorings.jl/stable/)). SNOW exports two ready-made choices:
+
+- `DEFAULT_COLORING_ALGORITHM` (the default if you don't specify anything): natural column order. Cheapest possible coloring construction cost.
+- `BEST_OF_COLORING_ALGORITHM`: tries both the natural order and the smallest-last order, keeping whichever produces fewer colors. Never worse than the default, sometimes meaningfully better (e.g. ~20% fewer colors on some real-world sparsity patterns), at a several-times-higher one-time construction cost - usually worthwhile unless your optimization only runs for a handful of iterations.
+
+```@example sp
+options = Options(sparsity=sp, derivatives=[ReverseAD(), ForwardAD(coloring_algorithm=BEST_OF_COLORING_ALGORITHM)])
+nothing #hide
+```
+
+You can also build your own `GreedyColoringAlgorithm` from any ordering in SparseMatrixColorings.jl, or a tuple of several orderings (in which case the best of all of them is kept, at the combined cost of trying each):
+
+```@example sp
+using SparseMatrixColorings
+
+# a single specific ordering
+alg1 = SparseMatrixColorings.GreedyColoringAlgorithm(SparseMatrixColorings.SmallestLast())
+
+# largest-first (often competitive with smallest-last, sometimes better or worse depending on structure)
+alg2 = SparseMatrixColorings.GreedyColoringAlgorithm(SparseMatrixColorings.DynamicLargestFirst())
+
+# incidence-degree ordering
+alg3 = SparseMatrixColorings.GreedyColoringAlgorithm(SparseMatrixColorings.IncidenceDegree())
+
+# try several orderings and keep whichever gives the fewest colors (this is how
+# BEST_OF_COLORING_ALGORITHM itself is defined)
+alg4 = SparseMatrixColorings.GreedyColoringAlgorithm((
+    SparseMatrixColorings.NaturalOrder(),
+    SparseMatrixColorings.SmallestLast(),
+    SparseMatrixColorings.IncidenceDegree(),
+))
+
+options = Options(sparsity=sp, derivatives=[ReverseAD(), ForwardAD(coloring_algorithm=alg1)])
+nothing #hide
+```
+
+There's no single ordering that's always best - it depends on the sparsity structure of your problem. If cache construction time isn't a concern (it's a one-time cost, paid once per problem rather than once per Jacobian evaluation), trying a tuple of several orderings like `alg4` above is a reasonable way to get a good coloring without having to guess which heuristic suits your specific problem.
+
 You can also provide your own derivatives.  For sparse Jacobians there are a wide variety of possible use cases (structure you can take advantage of, mixed-mode AD, using a combination of analytic and AD, etc.), and so for best performance you may want to provide your own.
 ```@example sp
 options = Options(sparsity=sp, derivatives=UserDeriv())

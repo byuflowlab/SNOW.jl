@@ -17,6 +17,7 @@ include("derivatives.jl")
 
 export ForwardAD, ReverseAD, RevZyg, ForwardFD, CentralFD, ComplexStep, UserDeriv
 export DensePattern, SparsePattern
+export DEFAULT_COLORING_ALGORITHM, BEST_OF_COLORING_ALGORITHM
 
 include("interface.jl")
 

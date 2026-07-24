@@ -5,12 +5,69 @@
 
 abstract type AbstractDiffMethod end
 
-struct ForwardAD <: AbstractDiffMethod end
+"""
+Default coloring algorithm for sparse Jacobians: natural column order,
+matching the cheapest one-time cache-construction cost.
+
+For an alternative that tries both the natural order and the smallest-last
+order (keeping whichever gives fewer colors - never worse than natural
+order alone, sometimes meaningfully better, e.g. ~20% fewer colors on some
+real-world sparsity patterns, at a several-times-higher one-time cache
+construction cost), use [`BEST_OF_COLORING_ALGORITHM`](@ref).
+"""
+const DEFAULT_COLORING_ALGORITHM = SparseMatrixColorings.GreedyColoringAlgorithm(
+    SparseMatrixColorings.NaturalOrder(),
+)
+
+"""
+Coloring algorithm that tries both the natural column order and the
+smallest-last order, keeping whichever gives fewer colors. Fewer colors
+means fewer function calls per Jacobian evaluation, at the cost of a
+several-times-higher one-time cache construction cost. Pass to
+`coloring_algorithm` on `ForwardAD`/`ForwardFD`/`CentralFD`/`ComplexStep`
+to opt in.
+"""
+const BEST_OF_COLORING_ALGORITHM = SparseMatrixColorings.GreedyColoringAlgorithm(
+    (SparseMatrixColorings.NaturalOrder(), SparseMatrixColorings.SmallestLast()),
+)
+
+"""
+    ForwardAD(; coloring_algorithm=DEFAULT_COLORING_ALGORITHM)
+
+`coloring_algorithm` is only used for sparse Jacobians, and may be any
+`ADTypes.AbstractColoringAlgorithm` (e.g. from SparseMatrixColorings.jl).
+"""
+struct ForwardAD{TC} <: AbstractDiffMethod
+    coloring_algorithm::TC
+end
+ForwardAD(; coloring_algorithm=DEFAULT_COLORING_ALGORITHM) = ForwardAD(coloring_algorithm)
+
 struct ReverseAD <: AbstractDiffMethod end
 # struct RevZyg <: AbstractDiffMethod end  # only used for gradients (not jacobians)
-struct ForwardFD <: AbstractDiffMethod end
-struct CentralFD <: AbstractDiffMethod end
-struct ComplexStep <: AbstractDiffMethod end
+
+"""
+    ForwardFD(; coloring_algorithm=DEFAULT_COLORING_ALGORITHM)
+    CentralFD(; coloring_algorithm=DEFAULT_COLORING_ALGORITHM)
+    ComplexStep(; coloring_algorithm=DEFAULT_COLORING_ALGORITHM)
+
+`coloring_algorithm` is only used for sparse Jacobians, and may be any
+`ADTypes.AbstractColoringAlgorithm` (e.g. from SparseMatrixColorings.jl).
+"""
+struct ForwardFD{TC} <: AbstractDiffMethod
+    coloring_algorithm::TC
+end
+ForwardFD(; coloring_algorithm=DEFAULT_COLORING_ALGORITHM) = ForwardFD(coloring_algorithm)
+
+struct CentralFD{TC} <: AbstractDiffMethod
+    coloring_algorithm::TC
+end
+CentralFD(; coloring_algorithm=DEFAULT_COLORING_ALGORITHM) = CentralFD(coloring_algorithm)
+
+struct ComplexStep{TC} <: AbstractDiffMethod
+    coloring_algorithm::TC
+end
+ComplexStep(; coloring_algorithm=DEFAULT_COLORING_ALGORITHM) = ComplexStep(coloring_algorithm)
+
 struct UserDeriv <: AbstractDiffMethod end   # user-specified derivatives
 
 FD = Union{ForwardFD, CentralFD, ComplexStep}
@@ -512,7 +569,7 @@ function sparsejacobiancache(sp::SparsePattern, dtype::ForwardAD, func!, nx, ng)
 
     backend = ADTypes.AutoSparse(ADTypes.AutoForwardDiff();
         sparsity_detector=ADTypes.KnownJacobianSparsityDetector(Jsp),
-        coloring_algorithm=SparseMatrixColorings.GreedyColoringAlgorithm())
+        coloring_algorithm=dtype.coloring_algorithm)
     prep = DifferentiationInterface.prepare_jacobian(func!, g, backend, x)
 
     cachesp = (prep=prep, backend=backend, ybuf=g)
@@ -602,7 +659,7 @@ function sparsejacobiancache(sp::SparsePattern, dtype::FD, func!, nx, ng)
     colors = SparseMatrixColorings.fast_coloring(
         Jsp,
         SparseMatrixColorings.ColoringProblem(; structure=:nonsymmetric, partition=:column),
-        SparseMatrixColorings.GreedyColoringAlgorithm(),
+        dtype.coloring_algorithm,
     )
     fdtype = finitediff_type(dtype)
     cache = FiniteDiff.JacobianCache(x, g, fdtype, colorvec=colors, sparsity=Jsp)

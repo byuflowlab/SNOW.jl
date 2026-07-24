@@ -153,6 +153,51 @@ Jsparse = Matrix(sparse(sp.rows, sp.cols, dg, ng, nx))
 end
 
 
+@testset "sparse jacobian - custom coloring algorithm" begin
+
+# default is the cheap natural-order coloring; users can opt into
+# BEST_OF_COLORING_ALGORITHM (or any other ADTypes.AbstractColoringAlgorithm)
+# for potentially fewer colors at a higher one-time cache-construction cost
+function tridiagonal!(g, x)
+    n = length(x)
+    g[1] = x[1]^2 - 2*x[2]
+    for i in 2:n-1
+        g[i] = x[i-1]*x[i] - x[i+1]^2 + sin(x[i])
+    end
+    g[n] = x[n]^2 - x[n-1]
+    return sum(abs2, x)
+end
+
+nx = 10
+ng = 10
+lx = -5*ones(nx)
+ux = 5*ones(nx)
+sp = SparsePattern(ForwardAD(), tridiagonal!, ng, lx, ux)
+x = collect(range(0.2, 1.7, length=nx))
+Jdense = ForwardDiff.jacobian(tridiagonal!, zeros(ng), x)
+
+@test ForwardAD().coloring_algorithm === SNOW.DEFAULT_COLORING_ALGORITHM
+@test ForwardFD().coloring_algorithm === SNOW.DEFAULT_COLORING_ALGORITHM
+
+dtype = ForwardAD(coloring_algorithm=BEST_OF_COLORING_ALGORITHM)
+@test dtype.coloring_algorithm === BEST_OF_COLORING_ALGORITHM
+cache = SNOW.sparsejacobiancache(sp, dtype, tridiagonal!, nx, ng)
+dg = zeros(length(sp.rows))
+SNOW.sparsejacobian!(dg, x, cache)
+Jsparse = Matrix(sparse(sp.rows, sp.cols, dg, ng, nx))
+@test isapprox(Jsparse, Jdense; atol=1e-8)
+
+dtypefd = ForwardFD(coloring_algorithm=BEST_OF_COLORING_ALGORITHM)
+@test dtypefd.coloring_algorithm === BEST_OF_COLORING_ALGORITHM
+cachefd = SNOW.sparsejacobiancache(sp, dtypefd, tridiagonal!, nx, ng)
+dgfd = zeros(length(sp.rows))
+SNOW.sparsejacobian!(dgfd, x, cachefd)
+Jsparsefd = Matrix(sparse(sp.rows, sp.cols, dgfd, ng, nx))
+@test isapprox(Jsparsefd, Jdense; atol=1e-4)
+
+end
+
+
 @testset "sparse jacobian - non-square" begin
 
 # more constraints than variables (overdetermined), banded + wraparound
