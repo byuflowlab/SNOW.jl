@@ -1,0 +1,6 @@
+[deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+MatrixDepot = "b51810bb-c9f3-55da-ae3c-350fc1fbce05"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+SNOW = "105f6ee8-0889-46b1-9d4b-65e03cbc8f13"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
