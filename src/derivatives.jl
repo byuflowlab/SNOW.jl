@@ -37,7 +37,7 @@ const BEST_OF_COLORING_ALGORITHM = SparseMatrixColorings.GreedyColoringAlgorithm
 `coloring_algorithm` is only used for sparse Jacobians, and may be any
 `ADTypes.AbstractColoringAlgorithm` (e.g. from SparseMatrixColorings.jl).
 """
-struct ForwardAD{TC} <: AbstractDiffMethod
+struct ForwardAD{TC<:ADTypes.AbstractColoringAlgorithm} <: AbstractDiffMethod
     coloring_algorithm::TC
 end
 ForwardAD(; coloring_algorithm=DEFAULT_COLORING_ALGORITHM) = ForwardAD(coloring_algorithm)
@@ -53,17 +53,17 @@ struct ReverseAD <: AbstractDiffMethod end
 `coloring_algorithm` is only used for sparse Jacobians, and may be any
 `ADTypes.AbstractColoringAlgorithm` (e.g. from SparseMatrixColorings.jl).
 """
-struct ForwardFD{TC} <: AbstractDiffMethod
+struct ForwardFD{TC<:ADTypes.AbstractColoringAlgorithm} <: AbstractDiffMethod
     coloring_algorithm::TC
 end
 ForwardFD(; coloring_algorithm=DEFAULT_COLORING_ALGORITHM) = ForwardFD(coloring_algorithm)
 
-struct CentralFD{TC} <: AbstractDiffMethod
+struct CentralFD{TC<:ADTypes.AbstractColoringAlgorithm} <: AbstractDiffMethod
     coloring_algorithm::TC
 end
 CentralFD(; coloring_algorithm=DEFAULT_COLORING_ALGORITHM) = CentralFD(coloring_algorithm)
 
-struct ComplexStep{TC} <: AbstractDiffMethod
+struct ComplexStep{TC<:ADTypes.AbstractColoringAlgorithm} <: AbstractDiffMethod
     coloring_algorithm::TC
 end
 ComplexStep(; coloring_algorithm=DEFAULT_COLORING_ALGORITHM) = ComplexStep(coloring_algorithm)
