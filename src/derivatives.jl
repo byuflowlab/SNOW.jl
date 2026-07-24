@@ -605,7 +605,7 @@ function sparsejacobiancache(sp::SparsePattern, dtype::FD, func!, nx, ng)
         SparseMatrixColorings.GreedyColoringAlgorithm(),
     )
     fdtype = finitediff_type(dtype)
-    cache = FiniteDiff.JacobianCache(x, fdtype, colorvec=colors, sparsity=Jsp)
+    cache = FiniteDiff.JacobianCache(x, g, fdtype, colorvec=colors, sparsity=Jsp)
 
     return GradOrJacCache(func!, Jsp, cache, dtype)
 end

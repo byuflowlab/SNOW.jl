@@ -152,6 +152,119 @@ Jsparse = Matrix(sparse(sp.rows, sp.cols, dg, ng, nx))
 
 end
 
+
+@testset "sparse jacobian - non-square" begin
+
+# more constraints than variables (overdetermined), banded + wraparound
+# coupling so ng != nx and the sparsity matrix is rectangular
+function overdetermined!(g, x)
+    nx = length(x)
+    ng = length(g)
+    for i in 1:ng
+        j1 = ((i - 1) % nx) + 1
+        j2 = (i % nx) + 1
+        g[i] = 0.3*x[j1]^2 + (j2 != j1 ? 0.2*x[j2] : 0.0)
+    end
+    return sum(abs2, x)
+end
+
+nx = 6
+ng = 14
+lx = -5*ones(nx)
+ux = 5*ones(nx)
+x = collect(range(0.15, 1.9, length=nx))
+Jdense = ForwardDiff.jacobian(overdetermined!, zeros(ng), x)
+
+sp = SparsePattern(ForwardAD(), overdetermined!, ng, lx, ux)
+@test size(sparse(sp.rows, sp.cols, ones(length(sp.rows)), ng, nx)) == (ng, nx)
+
+cache = SNOW.sparsejacobiancache(sp, ForwardAD(), overdetermined!, nx, ng)
+dg = zeros(length(sp.rows))
+SNOW.sparsejacobian!(dg, x, cache)
+Jsparse = Matrix(sparse(sp.rows, sp.cols, dg, ng, nx))
+@test isapprox(Jsparse, Jdense; atol=1e-8)
+
+for dtype in (ForwardFD(), CentralFD(), ComplexStep())
+    cachefd = SNOW.sparsejacobiancache(sp, dtype, overdetermined!, nx, ng)
+    dgfd = zeros(length(sp.rows))
+    SNOW.sparsejacobian!(dgfd, x, cachefd)
+    Jsparsefd = Matrix(sparse(sp.rows, sp.cols, dgfd, ng, nx))
+    @test isapprox(Jsparsefd, Jdense; atol=1e-4)
+end
+
+end
+
+
+@testset "sparse jacobian - repeated evaluation" begin
+
+# a single cache must produce correct results across many calls at
+# different x, not just the first call (catches stale-state bugs in
+# reused scratch buffers / prepared coloring state)
+function tridiagonal!(g, x)
+    n = length(x)
+    g[1] = x[1]^2 - 2*x[2]
+    for i in 2:n-1
+        g[i] = x[i-1]*x[i] - x[i+1]^2 + sin(x[i])
+    end
+    g[n] = x[n]^2 - x[n-1]
+    return sum(abs2, x)
+end
+
+nx = 10
+ng = 10
+lx = -5*ones(nx)
+ux = 5*ones(nx)
+sp = SparsePattern(ForwardAD(), tridiagonal!, ng, lx, ux)
+
+cache = SNOW.sparsejacobiancache(sp, ForwardAD(), tridiagonal!, nx, ng)
+dg = zeros(length(sp.rows))
+
+for trial in 1:5
+    x = collect(range(0.1*trial, 0.1*trial + 1.5, length=nx))
+    SNOW.sparsejacobian!(dg, x, cache)
+    Jsparse = Matrix(sparse(sp.rows, sp.cols, dg, ng, nx))
+    Jdense = ForwardDiff.jacobian(tridiagonal!, zeros(ng), x)
+    @test isapprox(Jsparse, Jdense; atol=1e-8)
+end
+
+end
+
+
+@testset "sparse jacobian - empty sparsity" begin
+
+# constraints that don't depend on x at all: sp.rows/cols come back empty.
+# the old manual SparseDiffTools-replacement code had an explicit ncolor==0
+# branch for this; confirm the DifferentiationInterface path also degrades
+# gracefully instead of erroring.
+function constantfun!(g, x)
+    g[1] = 5.0
+    g[2] = -3.0
+    return sum(abs2, x)
+end
+
+nx = 4
+ng = 2
+lx = -5*ones(nx)
+ux = 5*ones(nx)
+sp = SparsePattern(ForwardAD(), constantfun!, ng, lx, ux)
+@test isempty(sp.rows)
+
+x = collect(range(0.3, 1.2, length=nx))
+
+cache = SNOW.sparsejacobiancache(sp, ForwardAD(), constantfun!, nx, ng)
+dg = zeros(length(sp.rows))
+SNOW.sparsejacobian!(dg, x, cache)
+@test isempty(dg)
+
+for dtype in (ForwardFD(), CentralFD(), ComplexStep())
+    cachefd = SNOW.sparsejacobiancache(sp, dtype, constantfun!, nx, ng)
+    dgfd = zeros(length(sp.rows))
+    SNOW.sparsejacobian!(dgfd, x, cachefd)
+    @test isempty(dgfd)
+end
+
+end
+
 # if checkallocations
 # # -------- test allocations --------------
 #     using BenchmarkTools
@@ -261,6 +374,19 @@ ng = 3
 options = Options(solver=IPOPT(), derivatives=ForwardFD())
 xopt, fopt, info, out = minimize(barnes, x0, ng, lx, ux, -Inf, 0.0, options)
 
+
+@test isapprox(xopt[1], 49.5263; atol=1e-4)
+@test isapprox(xopt[2], 19.6228; atol=1e-4)
+@test isapprox(fopt, -31.6368; atol=1e-4)
+@test info == :Solve_Succeeded || info == :Solved_To_Acceptable_Level
+
+# same problem, but through a SparsePattern + DifferentiationInterface-based
+# ForwardAD sparse jacobian, end-to-end through the real Ipopt callback loop
+# (Ipopt calls the jacobian callback many times at different x during the
+# solve, unlike the isolated single/few-call tests above)
+sp_barnes = SparsePattern(ForwardAD(), barnes, ng, lx, ux)
+options = Options(solver=IPOPT(), derivatives=[ReverseAD(), ForwardAD()], sparsity=sp_barnes)
+xopt, fopt, info, out = minimize(barnes, x0, ng, lx, ux, -Inf, 0.0, options)
 
 @test isapprox(xopt[1], 49.5263; atol=1e-4)
 @test isapprox(xopt[2], 19.6228; atol=1e-4)
