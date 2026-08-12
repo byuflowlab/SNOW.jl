@@ -120,6 +120,14 @@ function optimize(solver::IPOPT, cache, x0, lx, ux, lg, ug, rows, cols)
     # solve problem
     prob.x = x0
     status = Ipopt.IpoptSolve(prob)
+    
+    # copy the values you need BEFORE freeing
+    result_x = copy(prob.x)
+    result_f = prob.obj_val
+    result_status = ApplicationReturnStatus[status]
+
+    # now it's safe to free the C-side memory
+    finalize(prob)
 
     return prob.x, prob.obj_val, ApplicationReturnStatus[status], nothing
 end
