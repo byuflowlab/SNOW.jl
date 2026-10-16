@@ -1,7 +1,7 @@
 name = "SNOW"
 uuid = "105f6ee8-0889-46b1-9d4b-65e03cbc8f13"
 authors = ["Andrew Ning <aning@byu.edu> and contributors"]
-version = "1.0.0"
+version = "1.0.1"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"

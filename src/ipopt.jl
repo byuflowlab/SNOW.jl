@@ -58,14 +58,15 @@ function optimize(solver::IPOPT, cache, x0, lx, ux, lg, ug, rows, cols)
     function ipcon(x, g)  # ipopt calls this function first
 
         f = evaluate!(g, df, dg, x, cache)
-        xlast = x
+        xlast = copy(x)
         
         return nothing
     end
 
     function ipobj(x)
         if !isequal(x, xlast)
-            f = func!(g, x)
+            f = evaluate!(g, df, dg, x, cache)
+            xlast = copy(x)
         end
         return f
     end
@@ -73,7 +74,7 @@ function optimize(solver::IPOPT, cache, x0, lx, ux, lg, ug, rows, cols)
     function ipgrad_obj(x, grad)
         if !isequal(x, xlast)
             f = evaluate!(g, df, dg, x, cache)
-            xlast = x
+            xlast = copy(x)
         end
         grad[:] = df
         return nothing
@@ -86,7 +87,7 @@ function optimize(solver::IPOPT, cache, x0, lx, ux, lg, ug, rows, cols)
         else
             if !isequal(x, xlast)
                 f = evaluate!(g, df, dg, x, cache)
-                xlast = x
+                xlast = copy(x)
             end
             values[:] = dg
         end

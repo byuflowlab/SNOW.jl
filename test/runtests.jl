@@ -484,6 +484,19 @@ xopt, fopt, info, out = minimize(barnes, x0, ng, lx, ux, -Inf, 0.0, options)
 @test isapprox(fopt, -31.6368; atol=1e-4)
 @test info == :Solve_Succeeded || info == :Solved_To_Acceptable_Level
 
+# unconstrained (ng = 0): Ipopt skips the constraint callback, so the cached
+# x must be a copy or the objective/gradient go stale and the line search stalls
+function rosenbrock(g, x)
+    return (1 - x[1])^2 + 100*(x[2] - x[1]^2)^2
+end
+
+options = Options(solver=IPOPT(), derivatives=ForwardAD())
+xopt, fopt, info, out = minimize(rosenbrock, [-1.2; 1.0], 0, [-5.0; -5.0], [5.0; 5.0], Float64[], Float64[], options)
+
+@test isapprox(xopt, [1.0, 1.0]; atol=1e-4)
+@test fopt < 1e-8
+@test info == :Solve_Succeeded || info == :Solved_To_Acceptable_Level
+
 if snopttest
     options = Options(solver=SNOPT(), derivatives=ForwardAD())
     xopt, fopt, info, out = minimize(barnes, x0, ng, lx, ux, -Inf, 0.0, options)
